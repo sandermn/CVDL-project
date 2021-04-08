@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib as mp
 import matplotlib.pyplot as plt
 import time
+import os
 
 from pathlib import Path
 import torch
@@ -11,6 +12,7 @@ from torch import nn
 
 from DatasetLoader import DatasetLoader
 from Unet2D import Unet2D
+from utils.saver import save
 
 
 def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, epochs=1):
@@ -82,6 +84,9 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, epochs=1):
             print('-' * 10)
 
             train_loss.append(epoch_loss) if phase=='train' else valid_loss.append(epoch_loss)
+            
+            save(model.state_dict(), Path(os.getcwd() + '/models'))
+            
 
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))    
@@ -113,10 +118,9 @@ def main ():
     learn_rate = 0.01
 
     #sets the matplotlib display backend (most likely not needed)
-    mp.use('TkAgg', force=True)
-
-    #load the training data
-    base_path = Path('/home/gkiss/Data/CAMUS_resized')
+    #mp.use('TkAgg', force=True)
+    
+    base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     data = DatasetLoader(base_path/'train_gray', 
                         base_path/'train_gt')
     print(len(data))
@@ -144,6 +148,9 @@ def main ():
 
     #do some training
     train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, acc_metric, epochs=epochs_val)
+    
+    #save model
+    #save(model, Path('/models'))
 
     #plot training and validation losses
     if visual_debug:
