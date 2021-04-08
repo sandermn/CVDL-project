@@ -8,6 +8,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
+from torchvision import transforms
 
 from DatasetLoader import DatasetLoader
 from Unet2D import Unet2D
@@ -114,18 +115,23 @@ def main():
     bs = 12
 
     # epochs
-    epochs_val = 50
+    epochs_val = 2
 
     # learning rate
     learn_rate = 0.01
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
+    
+    # data augmentation
+    trans = transforms.Compose([
+        transforms.RandomVerticalFlip(p=0.3)
+    ])
 
     # load the training data
     base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     data = DatasetLoader(base_path / 'train_gray',
-                         base_path / 'train_gt')
+                         base_path / 'train_gt', transform=trans)
     print(len(data))
 
     # split the training dataset and initialize the data loaders

@@ -7,12 +7,13 @@ from PIL import Image
 
 #load data from a folder
 class DatasetLoader(Dataset):
-    def __init__(self, gray_dir, gt_dir, pytorch=True):
+    def __init__(self, gray_dir, gt_dir, pytorch=True, transform=None):
         super().__init__()
         
         # Loop through the files in red folder and combine, into a dictionary, the other bands
         self.files = [self.combine_files(f, gt_dir) for f in gray_dir.iterdir() if not f.is_dir()]
         self.pytorch = pytorch
+        self.transform = transform
         
     def combine_files(self, gray_file: Path, gt_dir):
         
@@ -49,6 +50,11 @@ class DatasetLoader(Dataset):
         x = torch.tensor(self.open_as_array(idx, invert=self.pytorch), dtype=torch.float32)
         y = torch.tensor(self.open_mask(idx, add_dims=False), dtype=torch.torch.int64)
         
+        # transformation
+        if self.transform:
+            x = self.transform(x)
+            y = self.transform(y)
+        
         return x, y
     
     def get_as_pil(self, idx):
@@ -57,3 +63,5 @@ class DatasetLoader(Dataset):
         
         return Image.fromarray(arr.astype(np.uint8), 'RGB')
     
+    def get_transform(self):
+        self.transform = transform
