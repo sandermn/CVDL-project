@@ -13,7 +13,7 @@ from DatasetLoader import DatasetLoader
 from Unet2D import Unet2D
 
 
-def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, epochs=1):
+def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, epochs=1):
     start = time.time()
     model.cuda()
 
@@ -51,7 +51,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
                     outputs = model(x)
                     loss = loss_fn(outputs, y)
 
-                    # the backward pass frees the graph memory, so there is no 
+                    # the backward pass frees the graph memory, so there is no
                     # need for torch.no_grad in this training pass
                     loss.backward()
                     optimizer.step()
@@ -83,8 +83,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
             print('-' * 10)
 
             train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
-        torch.save(model.state_dict(), params_path + f'{epoch}.pth')
-    torch.save(model.state_dict(), params_path + 'final.pth')
+
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
@@ -93,6 +92,24 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
 
 def acc_metric(predb, yb):
     return (predb.argmax(dim=1) == yb.cuda()).float().mean()
+
+def dice_metric(predb, yb):
+
+    dice = 0
+    intersections = 0
+    unionPlussIntersections = 0
+    for pred in predb:
+        intersections += pred.float() * yb
+        unionPlussIntersections += pred.float() + yb
+
+    diceScore = ((2 * intersections)/(unionPlussIntersections))
+    return diceScore
+
+
+
+def dice_loss(predb, yb):
+    return 1-dice_metric(predb, yb)
+
 
 
 def batch_to_img(xb, idx):
@@ -108,7 +125,6 @@ def predb_to_mask(predb, idx):
 def main():
     # enable if you want to see some plotting
     visual_debug = True
-    params_path = 'models/model_epoch_'
 
     # batch size
     bs = 12
@@ -120,20 +136,16 @@ def main():
     learn_rate = 0.01
 
     # sets the matplotlib display backend (most likely not needed)
-    # mp.use('TkAgg', force=True)
+    mp.use('TkAgg', force=True)
 
     # load the training data
-    base_path = Path('/work/datasets/medical_project/CAMUS_resized')
+    base_path = Path('/home/gkiss/Data/CAMUS_resized')
     data = DatasetLoader(base_path / 'train_gray',
                          base_path / 'train_gt')
     print(len(data))
 
     # split the training dataset and initialize the data loaders
-    train_dataset, valid_dataset, _ = torch.utils.data.random_split(
-        data,
-        (300, 100, 50),
-        generator=torch.Generator().manual_seed(42)
-    )
+    train_dataset, valid_dataset = torch.utils.data.random_split(data, (300, 150))
     train_data = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_data = DataLoader(valid_dataset, batch_size=bs, shuffle=True)
 
@@ -154,8 +166,7 @@ def main():
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, acc_metric, epochs=epochs_val,
-                                   params_path=params_path)
+    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, acc_metric, epochs=epochs_val)
 
     # plot training and validation losses
     if visual_debug:
