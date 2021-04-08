@@ -13,7 +13,7 @@ from DatasetLoader import DatasetLoader
 from Unet2D import Unet2D
 
 
-def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, epochs=1):
+def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, epochs=1):
     start = time.time()
     model.cuda()
 
@@ -80,9 +80,10 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, epochs=1):
             print('-' * 10)
             print('{} Loss: {:.4f} Acc: {}'.format(phase, epoch_loss, epoch_acc))
             print('-' * 10)
-
+        
             train_loss.append(epoch_loss) if phase=='train' else valid_loss.append(epoch_loss)
-
+        torch.save(model.state_dict(), params_path+f'{epoch}.pth')
+    torch.save(model.state_dict(), params_path+'final.pth')
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))    
     
@@ -102,6 +103,7 @@ def predb_to_mask(predb, idx):
 def main ():
     #enable if you want to see some plotting
     visual_debug = True
+    params_path = 'models/model_epoch_'
 
     #batch size
     bs = 12
@@ -113,16 +115,20 @@ def main ():
     learn_rate = 0.01
 
     #sets the matplotlib display backend (most likely not needed)
-    mp.use('TkAgg', force=True)
+    #mp.use('TkAgg', force=True)
 
     #load the training data
-    base_path = Path('/home/gkiss/Data/CAMUS_resized')
+    base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     data = DatasetLoader(base_path/'train_gray', 
                         base_path/'train_gt')
     print(len(data))
 
     #split the training dataset and initialize the data loaders
-    train_dataset, valid_dataset = torch.utils.data.random_split(data, (300, 150))
+    train_dataset, valid_dataset, _ = torch.utils.data.random_split(
+        data,
+        (300, 100, 50),
+        generator=torch.Generator().manual_seed(42)
+    )
     train_data = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_data = DataLoader(valid_dataset, batch_size=bs, shuffle=True)
 
@@ -133,7 +139,7 @@ def main ():
         plt.show()
 
     xb, yb = next(iter(train_data))
-    print (xb.shape, yb.shape)
+    print(xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and 2 channels as output
     unet = Unet2D(1,2)
@@ -143,7 +149,7 @@ def main ():
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     #do some training
-    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, acc_metric, epochs=epochs_val)
+    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, acc_metric, epochs=epochs_val, params_path=params_path)
 
     #plot training and validation losses
     if visual_debug:
@@ -157,6 +163,7 @@ def main ():
     xb, yb = next(iter(train_data))
     with torch.no_grad():
         predb = unet(xb.cuda())
+
 
     #show the predicted segmentations
     if visual_debug:
