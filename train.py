@@ -95,6 +95,17 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
 def acc_metric(predb, yb):
     return (predb.argmax(dim=1) == yb.cuda()).float().mean()
 
+def dice_metric(predb, yb):
+    # Ventricle = 2, Background = 0
+    segmented = 2 * predb.argmax(dim=1)
+
+    # TP = 2 - 1 = 1, TN = 0 - 0 = 0, FP = 2 - 0 = 2, FN = 0 - 1 = -1
+    conf = segmented - yb
+    TP = (conf == 1).sum()
+    TN = (conf == 0).sum()
+    FP = (conf == 2).sum()
+    FN = (conf == -1).sum()
+    return 2 * TP / (2 * TP + FP + FN)
 
 def batch_to_img(xb, idx):
     img = np.array(xb[idx, 0:3])
