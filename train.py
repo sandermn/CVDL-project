@@ -137,7 +137,7 @@ def main():
     # PREPROCESS SKAL GJØRES HER
     mean, std = 0.485, 0.229
     preprocess = transforms.Compose([
-        transforms.GaussianBlur(11, sigma=(0.1,2.0))
+        transforms.GaussianBlur(11, sigma=(0.1,2.0)),
         transforms.ToTensor(),
         transforms.Normalize(mean, std)
     ])
