@@ -135,12 +135,15 @@ def main():
     # mp.use('TkAgg', force=True)
     # Preprocessing
     # PREPROCESS SKAL GJØRES HER
-    # preprocess = transforms.Compose(
-    #     Gaussian smoothing
-    # )
+    mean, std = 0.485, 0.229
+    preprocess = transforms.Compose([
+        transforms.GaussianBlur(11, sigma=(0.1,2.0))
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
     # Data Augmentation
     # LEGG TIL NYE METODER FOR AGUMENTATION HER
-    trans = transforms.Compose([
+    augmentation = transforms.Compose([
         transforms.RandomVerticalFlip(p=0.3)
     ])
 
@@ -148,7 +151,7 @@ def main():
     # CHANGE "trans" TO "preprocess" if applying preprocessing (gaussian blur and isotropic pixel size)
     base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     data = DatasetMedical(base_path / 'train_gray',
-                         base_path / 'train_gt', transform=trans)
+                         base_path / 'train_gt', transform=preprocess)
     print(len(data))
 
     # split the training dataset and initialize the data loaders
@@ -158,7 +161,7 @@ def main():
         generator=torch.Generator().manual_seed(42)
     )
     # Overskriver transformen her
-    train_dataset.transform = trans
+    train_dataset.transform = augmentation
     train_data = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_data = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
 
