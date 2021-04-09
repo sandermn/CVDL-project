@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
 
-from DatasetLoader import DatasetLoader
+from DatasetMedical import DatasetMedical
 from Unet2D import Unet2D
 
 
@@ -133,15 +133,21 @@ def main():
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
-    
-    # data augmentation
+    # Preprocessing
+    # PREPROCESS SKAL GJØRES HER
+    # preprocess = transforms.Compose(
+    #     Gaussian smoothing
+    # )
+    # Data Augmentation
+    # LEGG TIL NYE METODER FOR AGUMENTATION HER
     trans = transforms.Compose([
         transforms.RandomVerticalFlip(p=0.3)
     ])
 
     # load the training data
+    # CHANGE "trans" TO "preprocess" if applying preprocessing (gaussian blur and isotropic pixel size)
     base_path = Path('/work/datasets/medical_project/CAMUS_resized')
-    data = DatasetLoader(base_path / 'train_gray',
+    data = DatasetMedical(base_path / 'train_gray',
                          base_path / 'train_gt', transform=trans)
     print(len(data))
 
@@ -151,8 +157,10 @@ def main():
         (300, 100, 50),
         generator=torch.Generator().manual_seed(42)
     )
+    # Overskriver transformen her
+    train_dataset.transform = trans
     train_data = DataLoader(train_dataset, batch_size=bs, shuffle=True)
-    valid_data = DataLoader(valid_dataset, batch_size=bs, shuffle=True)
+    valid_data = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
 
     if visual_debug:
         fig, ax = plt.subplots(1, 2)

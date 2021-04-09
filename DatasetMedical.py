@@ -6,7 +6,7 @@ from torch.utils.data import Dataset, DataLoader, sampler
 from PIL import Image
 
 #load data from a folder
-class DatasetLoader(Dataset):
+class DatasetMedical(Dataset):
     def __init__(self, gray_dir, gt_dir, pytorch=True, transform=None):
         super().__init__()
         
@@ -64,4 +64,4 @@ class DatasetLoader(Dataset):
         return Image.fromarray(arr.astype(np.uint8), 'RGB')
     
     def get_transform(self):
-        self.transform = transform
+        return self.transform
