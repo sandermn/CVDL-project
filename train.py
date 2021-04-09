@@ -130,25 +130,31 @@ def main():
 
     # learning rate
     learn_rate = 0.01
+    
+    # datasets
+    datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
+    curr_dataset = datasets[0]
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
+    
     # Preprocessing
-    # PREPROCESS SKAL GJØRES HER
-    # preprocess = transforms.Compose(
-    #     Gaussian smoothing
-    # )
-    # Data Augmentation
-    # LEGG TIL NYE METODER FOR AGUMENTATION HER
-    trans = transforms.Compose([
-        transforms.RandomVerticalFlip(p=0.3)
+    preprocess = transforms.Compose([
+        transforms.GaussianBlur(3, sigma=0.1)
     ])
 
     # load the training data
-    # CHANGE "trans" TO "preprocess" if applying preprocessing (gaussian blur and isotropic pixel size)
-    base_path = Path('/work/datasets/medical_project/CAMUS_resized')
-    data = DatasetMedical(base_path / 'train_gray',
-                         base_path / 'train_gt', transform=trans)
+    if curr_dataset == 'CAMUS_resized':
+        base_path = Path('/work/datasets/medical_project/CAMUS_resized')
+        data = DatasetCAMUS_r(base_path / 'train_gray', base_path / 'train_gt', transform=preprocess)
+    elif curr_dataset == 'CAMUS':
+        base_path = Path('/work/datasets/medical_project/CAMUS')
+        data = DatasetCAMUS()
+    elif curr_dataset == 'TEE':
+        base_path = Path('/work/datasets/medical_project/TEE')
+        data = DatasetTEE()
+        
+        
     print(len(data))
 
     # split the training dataset and initialize the data loaders
