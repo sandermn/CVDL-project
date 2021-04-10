@@ -1,9 +1,9 @@
 import numpy as np
-import pandas as pd
 import matplotlib as mp
 import matplotlib.pyplot as plt
 import time
-
+import os
+import random
 from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader, sampler
@@ -136,41 +136,50 @@ def main():
     # Preprocessing
     # PREPROCESS SKAL GJØRES HER
     mean, std = 0.485, 0.229
-    preprocess = transforms.Compose([
-        transforms.GaussianBlur(11, sigma=(0.1, 2.0)),
+    transform_train = transforms.Compose([
+        transforms.GaussianBlur(3, sigma=(0.1, 2.0)),
+        transforms.RandomVerticalFlip(p=0.3),
         transforms.Normalize(mean, std)
     ])
     # Data Augmentation
     # LEGG TIL NYE METODER FOR AGUMENTATION HER
-    augmentation = transforms.Compose([
-        transforms.RandomVerticalFlip(p=0.3)
+    transform_val = transforms.Compose([
+        transforms.GaussianBlur(3, sigma=(0.1, 2.0))
     ])
 
     # load the training data
     # CHANGE "trans" TO "preprocess" if applying preprocessing (gaussian blur and isotropic pixel size)
-    base_path = Path('/work/datasets/medical_project/CAMUS_resized')
-    data = DatasetMedical(base_path / 'train_gray',
-                         base_path / 'train_gt', transform=preprocess)
-    print(len(data))
+    # base_path = Path('/work/datasets/medical_project/CAMUS_resized')
+    base_path = Path('test_split')
+    train_files, val_files, _ = get_random_folder_split(base_path)
+    print(train_files, val_files)
+    train_dataset = DatasetMedical(base_path / 'train_gray/', train_files,
+                                    base_path / 'train_gt', transform=transform_train)
+    val_dataset = DatasetMedical(base_path / 'train_gray/', val_files,
+                                    base_path / 'train_gt', transform=transform_val)
+    print(len(train_dataset))
+    # data = DatasetMedical(base_path / 'train_gray',
+    #                      base_path / 'train_gt', transform=preprocess)
+    # print(len(data))
 
     # split the training dataset and initialize the data loaders
-    train_dataset, valid_dataset, _ = torch.utils.data.random_split(
-        data,
-        (300, 100, 50),
-        generator=torch.Generator().manual_seed(42)
-    )
+    # train_dataset, valid_dataset, _ = torch.utils.data.random_split(
+    #     data,
+    #     (300, 100, 50),
+    #     generator=torch.Generator().manual_seed(42)
+    # )
     # Overskriver transformen her
-    train_dataset.transform = augmentation
-    train_data = DataLoader(train_dataset, batch_size=bs, shuffle=True)
-    valid_data = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
+    #train_dataset.dataset.transform = augmentation
+    train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
+    valid_dl = DataLoader(val_dataset, batch_size=bs, shuffle=False)
 
     if visual_debug:
         fig, ax = plt.subplots(1, 2)
-        ax[0].imshow(data.open_as_array(150))
-        ax[1].imshow(data.open_mask(150))
+        ax[0].imshow(train_dataset.open_as_array(150))
+        ax[1].imshow(train_dataset.open_mask(150))
         plt.show()
 
-    xb, yb = next(iter(train_data))
+    xb, yb = next(iter(train_dataset))
     print(xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and 2 channels as output
@@ -181,7 +190,7 @@ def main():
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, acc_metric, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dataset, val_dataset, loss_fn, opt, acc_metric, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -193,7 +202,7 @@ def main():
         plt.show()
 
     # predict on the next train batch (is this fair?)
-    xb, yb = next(iter(train_data))
+    xb, yb = next(iter(train_dataset))
     with torch.no_grad():
         predb = unet(xb.cuda())
 
@@ -207,6 +216,16 @@ def main():
 
         plt.show()
 
+def get_random_folder_split(path):
+    x_path = path / 'train_gray'
+    gray_files = os.listdir(x_path)
+    no_files = len(gray_files)
+    indices = list(range(no_files))
+    random.shuffle(indices)
+    train_files = [gray_files[i] for i in indices[:int(np.floor(0.7*no_files))]]
+    val_files = [gray_files[i] for i in indices[int(np.floor(0.7*no_files)): int(np.floor(0.85*no_files))]]
+    test_files = [gray_files[i] for i in indices[int(np.floor(0.85*no_files)):]]
+    return train_files, val_files, test_files
 
 if __name__ == "__main__":
     main()
