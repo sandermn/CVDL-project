@@ -5,11 +5,7 @@ from torchvision import transforms
 class Unet2D(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.transforms = nn.Sequential(
-            transforms.GaussianBlur(3, sigma=(0.1,2)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(10)
-        )
+
         self.conv1 = self.contract_block(in_channels, 32, 7, 3)
         self.conv2 = self.contract_block(32, 64, 3, 1)
         self.conv3 = self.contract_block(64, 128, 3, 1)
@@ -20,8 +16,7 @@ class Unet2D(nn.Module):
 
     def __call__(self, x):
         # downsampling part
-        trans = self.transforms(x)
-        conv1 = self.conv1(trans)
+        conv1 = self.conv1(x)
         conv2 = self.conv2(conv1)
         conv3 = self.conv3(conv2)
 

@@ -135,27 +135,20 @@ def main():
     # mp.use('TkAgg', force=True)
     # Preprocessing
     # PREPROCESS SKAL GJØRES HER
-    mean, std = 0.485, 0.229
     transform_train = transforms.Compose([
-        transforms.GaussianBlur(3, sigma=(0.1, 2.0)),
-        transforms.RandomVerticalFlip(p=0.3),
-        transforms.Normalize(mean, std)
+        transforms.RandomVerticalFlip(p=0.3)
     ])
     # Data Augmentation
     # LEGG TIL NYE METODER FOR AGUMENTATION HER
-    transform_val = transforms.Compose([
-        transforms.GaussianBlur(3, sigma=(0.1, 2.0))
-    ])
 
     # load the training data
     # CHANGE "trans" TO "preprocess" if applying preprocessing (gaussian blur and isotropic pixel size)
     base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     train_files, val_files, _ = get_random_folder_split(base_path)
-
-    train_dataset = DatasetMedical(base_path / 'train_gray/', train_files,
-                                    base_path / 'train_gt')
-    val_dataset = DatasetMedical(base_path / 'train_gray/', val_files,
-                                    base_path / 'train_gt')
+    train_dataset = DatasetMedical(base_path / 'train_gray', train_files,
+                                    base_path / 'train_gt', transform_train, gaussian_blur=True)
+    val_dataset = DatasetMedical(base_path / 'train_gray', val_files,
+                                    base_path / 'train_gt', transform_train, gaussian_blur=True)
     print(len(train_dataset))
     # data = DatasetMedical(base_path / 'train_gray',
     #                      base_path / 'train_gt', transform=preprocess)

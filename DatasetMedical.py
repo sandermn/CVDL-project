@@ -1,20 +1,24 @@
 import numpy as np
 import torch
-
+import matplotlib.pyplot as plt
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader, sampler
+from torchvision import transforms
 from PIL import Image
+
 
 #load data from a folder
 class DatasetMedical(Dataset):
-    def __init__(self, gray_dir, gray_files, gt_dir, pytorch=True, transform=None):
+    def __init__(self, gray_dir, gray_files, gt_dir, pytorch=True, transform=None, gaussian_blur=False):
         super().__init__()
         
         # Loop through the files in red folder and combine, into a dictionary, the other bands
+        print('gd', gray_dir)
         self.files = [self.combine_files(gray_dir/f, gt_dir) for f in gray_files]
         self.pytorch = pytorch
         self.transform = transform
-        
+        if gaussian_blur:
+            self.gaussian_blur = transforms.GaussianBlur(11, sigma=(1.5, 2.0))
     def combine_files(self, gray_file: Path, gt_dir):
         
         files = {'gray': gray_file, 
@@ -50,6 +54,10 @@ class DatasetMedical(Dataset):
         x = torch.tensor(self.open_as_array(idx, invert=self.pytorch), dtype=torch.float32)
         y = torch.tensor(self.open_mask(idx, add_dims=False), dtype=torch.torch.int64)
         
+        if self.gaussian_blur:
+            print("changes", x.shape)
+            #x = self.gaussian_blur(x)
+            print("after gb", x.shape)
         # transformation
         if self.transform:
             x = self.transform(x)
