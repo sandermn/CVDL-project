@@ -149,14 +149,13 @@ def main():
 
     # load the training data
     # CHANGE "trans" TO "preprocess" if applying preprocessing (gaussian blur and isotropic pixel size)
-    # base_path = Path('/work/datasets/medical_project/CAMUS_resized')
-    base_path = Path('test_split')
+    base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     train_files, val_files, _ = get_random_folder_split(base_path)
-    print(train_files, val_files)
+
     train_dataset = DatasetMedical(base_path / 'train_gray/', train_files,
-                                    base_path / 'train_gt', transform=transform_train)
+                                    base_path / 'train_gt')
     val_dataset = DatasetMedical(base_path / 'train_gray/', val_files,
-                                    base_path / 'train_gt', transform=transform_val)
+                                    base_path / 'train_gt')
     print(len(train_dataset))
     # data = DatasetMedical(base_path / 'train_gray',
     #                      base_path / 'train_gt', transform=preprocess)
