@@ -194,7 +194,7 @@ def main():
         plt.show()
 
     # predict on the next train batch (is this fair?)
-    xb, yb = next(iter(train_dataset))
+    xb, yb = next(iter(train_dl))
     with torch.no_grad():
         predb = unet(xb.cuda())
 

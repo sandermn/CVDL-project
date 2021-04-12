@@ -53,11 +53,10 @@ class DatasetMedical(Dataset):
         x = torch.tensor(self.open_as_array(idx, invert=self.pytorch), dtype=torch.float32)
         y = torch.tensor(self.open_mask(idx, add_dims=False), dtype=torch.torch.int64)
         
+        # Gaussian Blur
         if self.gaussian_blur:
-            print("changes", x.shape)
-            #x = self.gaussian_blur(x)
-            print("after gb", x.shape)
-        # transformation
+            x = self.gaussian_blur(x)
+        # Transformation
         if self.transform:
             x = self.transform(x)
             y = self.transform(y)
