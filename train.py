@@ -146,9 +146,9 @@ def main():
     base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     train_files, val_files, _ = get_random_folder_split(base_path)
     train_dataset = DatasetMedical(base_path / 'train_gray', train_files,
-                                    base_path / 'train_gt', transform_train, gaussian_blur=True)
+                                    base_path / 'train_gt', transform=transform_train, gaussian_blur=True)
     val_dataset = DatasetMedical(base_path / 'train_gray', val_files,
-                                    base_path / 'train_gt', transform_train, gaussian_blur=True)
+                                    base_path / 'train_gt', transform=transform_train, gaussian_blur=True)
     print(len(train_dataset))
     # data = DatasetMedical(base_path / 'train_gray',
     #                      base_path / 'train_gt', transform=preprocess)
@@ -182,7 +182,7 @@ def main():
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-    train_loss, valid_loss = train(unet, train_dataset, val_dataset, loss_fn, opt, acc_metric, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses

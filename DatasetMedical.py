@@ -13,7 +13,6 @@ class DatasetMedical(Dataset):
         super().__init__()
         
         # Loop through the files in red folder and combine, into a dictionary, the other bands
-        print('gd', gray_dir)
         self.files = [self.combine_files(gray_dir/f, gt_dir) for f in gray_files]
         self.pytorch = pytorch
         self.transform = transform
