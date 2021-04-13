@@ -171,7 +171,7 @@ def main():
         ax[1].imshow(train_dataset.open_mask(150))
         plt.show()
 
-    xb, yb = next(iter(train_dataset))
+    xb, yb = next(iter(train_dl))
     print(xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and 2 channels as output
