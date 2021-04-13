@@ -15,6 +15,7 @@ class Unet2D(nn.Module):
 
     def __call__(self, x):
         # downsampling part
+        #print(size(x))
         conv1 = self.conv1(x)
         conv2 = self.conv2(conv1)
         conv3 = self.conv3(conv2)

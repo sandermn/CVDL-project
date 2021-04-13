@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
 
-from DatasetMedical import DatasetMedical
+from DatasetMedical import DatasetCAMUS_r, DatasetCAMUS
 from Unet2D import Unet2D
 
 
@@ -126,21 +126,22 @@ def main():
     bs = 12
 
     # epochs
-    epochs_val = 2
+    epochs_val = 3
 
     # learning rate
     learn_rate = 0.01
     
-    # datasets
+    # datasets, 0=background+LV, 1=b+LV+M+RV, 2=??
     datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
-    curr_dataset = datasets[0]
+    curr_dataset = datasets[1]
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
     
     # Preprocessing
     preprocess = transforms.Compose([
-        transforms.GaussianBlur(3, sigma=0.1)
+        #transforms.GaussianBlur(3, sigma=0.1)
+        #transforms.Resize((224,224))
     ])
 
     # load the training data
@@ -149,7 +150,7 @@ def main():
         data = DatasetCAMUS_r(base_path / 'train_gray', base_path / 'train_gt', transform=preprocess)
     elif curr_dataset == 'CAMUS':
         base_path = Path('/work/datasets/medical_project/CAMUS')
-        data = DatasetCAMUS()
+        data = DatasetCAMUS(base_path, transform=preprocess)
     elif curr_dataset == 'TEE':
         base_path = Path('/work/datasets/medical_project/TEE')
         data = DatasetTEE()
@@ -163,8 +164,7 @@ def main():
         (300, 100, 50),
         generator=torch.Generator().manual_seed(42)
     )
-    # Overskriver transformen her
-    train_dataset.transform = trans
+
     train_data = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_data = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
 
