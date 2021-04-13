@@ -126,7 +126,7 @@ def main():
     bs = 12
 
     # epochs
-    epochs_val = 2
+    epochs_val = 50
 
     # learning rate
     learn_rate = 0.01
@@ -213,7 +213,7 @@ def get_random_folder_split(path):
     gray_files = os.listdir(x_path)
     no_files = len(gray_files)
     indices = list(range(no_files))
-    random.shuffle(indices)
+    random.Random(1).shuffle(indices)
     train_files = [gray_files[i] for i in indices[:int(np.floor(0.7*no_files))]]
     val_files = [gray_files[i] for i in indices[int(np.floor(0.7*no_files)): int(np.floor(0.85*no_files))]]
     test_files = [gray_files[i] for i in indices[int(np.floor(0.85*no_files)):]]

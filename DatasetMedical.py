@@ -18,6 +18,8 @@ class DatasetMedical(Dataset):
         self.transform = transform
         if gaussian_blur:
             self.gaussian_blur = transforms.GaussianBlur(11, sigma=(1.5, 2.0))
+        else:
+            self.gaussian_blur = False
     def combine_files(self, gray_file: Path, gt_dir):
         
         files = {'gray': gray_file, 
