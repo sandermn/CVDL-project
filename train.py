@@ -131,9 +131,10 @@ def main():
     # learning rate
     learn_rate = 0.01
     
-    # datasets, 0=background+LV, 1=b+LV+M+RV, 2=??
+    # CHANGE THESE VALUES TO CHANGE DATASETS
     datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
     curr_dataset = datasets[1]
+    outchannels = 4 #number of classes to segment
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
@@ -177,8 +178,8 @@ def main():
     xb, yb = next(iter(train_data))
     print(xb.shape, yb.shape)
 
-    # build the Unet2D with one channel as input and 2 channels as output
-    unet = Unet2D(1, 2)
+    # build the Unet2D with one channel as input and x channels as output
+    unet = Unet2D(1, outchannels)
 
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()

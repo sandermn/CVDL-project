@@ -121,21 +121,22 @@ class DatasetCAMUS(Dataset):
     def open_mask(self, idx, add_dims=False):
         #open mask file
         im = self.files[idx]['gt']
+        
+        # create array of mask and resize
         arr = np.array(im.imdata)
         pil_im = ToPILImage()(arr)
         pil_im = self.resize_image(pil_im)
-        
-        #print(pil_im.tolist())
-        #print("test")
-
-        
         raw_mask = np.array(pil_im) # a numpy array with unique values [0,1,2,3]
-        #raw_mask = np.where(raw_mask>100, 1, 0)
-        raw_mask = raw_mask / 4
-        print(np.unique(raw_mask))
         
-        #return np.expand_dims(raw_mask, 0) if add_dims else raw_mask
-        # normalize 
+        # raw_mask is (384,384) array, create array with 3 channels (384,384, 3)
+        
+        """
+        mask = np.zeros(np.concatenate((3, np.shape(raw_mask)),axis=None))
+        mask[0,:,:] = mask[0,:,:] + np.where(raw_mask==1, 1, 0)
+        mask[1,:,:] = mask[1,:,:] + np.where(raw_mask==2, 1, 0)
+        mask[2,:,:] = mask[2,:,:] + np.where(raw_mask==3, 1, 0)
+        """
+        
         return raw_mask
     
     
