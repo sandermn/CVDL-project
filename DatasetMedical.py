@@ -19,7 +19,7 @@ class DatasetMedical(Dataset):
         
         files = {'gray': gray_file, 
                  'gt': gt_dir/gray_file.name.replace('gray', 'gt')}
-
+        print(files)
         return files
                                        
     def __len__(self):
