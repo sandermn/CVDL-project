@@ -131,7 +131,7 @@ def main():
     bs = 12
 
     # epochs
-    epochs_val = 2
+    epochs_val = 50
 
     # learning rate
     learn_rate = 0.01
@@ -140,28 +140,20 @@ def main():
     # mp.use('TkAgg', force=True)
     # Preprocessing
     # PREPROCESS SKAL GJØRES HER
-    mean, std = 0.485, 0.229
     transform_train = transforms.Compose([
-        transforms.GaussianBlur(3, sigma=(0.1, 2.0)),
-        transforms.RandomVerticalFlip(p=0.3),
-        transforms.Normalize(mean, std)
+        transforms.RandomVerticalFlip(p=0.3)
     ])
     # Data Augmentation
     # LEGG TIL NYE METODER FOR AGUMENTATION HER
-    transform_val = transforms.Compose([
-        transforms.GaussianBlur(3, sigma=(0.1, 2.0))
-    ])
 
     # load the training data
     # CHANGE "trans" TO "preprocess" if applying preprocessing (gaussian blur and isotropic pixel size)
-    # base_path = Path('/work/datasets/medical_project/CAMUS_resized')
-    base_path = Path('test_split')
+    base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     train_files, val_files, _ = get_random_folder_split(base_path)
-    print(train_files, val_files)
-    train_dataset = DatasetMedical(base_path / 'train_gray/', train_files,
-                                    base_path / 'train_gt', transform=transform_train)
-    val_dataset = DatasetMedical(base_path / 'train_gray/', val_files,
-                                    base_path / 'train_gt', transform=transform_val)
+    train_dataset = DatasetMedical(base_path / 'train_gray', train_files,
+                                    base_path / 'train_gt', transform=transform_train, gaussian_blur=True)
+    val_dataset = DatasetMedical(base_path / 'train_gray', val_files,
+                                    base_path / 'train_gt', transform=transform_train, gaussian_blur=True)
     print(len(train_dataset))
     # data = DatasetMedical(base_path / 'train_gray',
     #                      base_path / 'train_gt', transform=preprocess)
@@ -184,7 +176,7 @@ def main():
         ax[1].imshow(train_dataset.open_mask(150))
         plt.show()
 
-    xb, yb = next(iter(train_dataset))
+    xb, yb = next(iter(train_dl))
     print(xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and 2 channels as output
@@ -195,7 +187,7 @@ def main():
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-    train_loss, valid_loss = train(unet, train_dataset, val_dataset, loss_fn, opt, acc_metric, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -207,7 +199,7 @@ def main():
         plt.show()
 
     # predict on the next train batch (is this fair?)
-    xb, yb = next(iter(train_dataset))
+    xb, yb = next(iter(train_dl))
     with torch.no_grad():
         predb = unet(xb.cuda())
 
@@ -226,7 +218,7 @@ def get_random_folder_split(path):
     gray_files = os.listdir(x_path)
     no_files = len(gray_files)
     indices = list(range(no_files))
-    random.shuffle(indices)
+    random.Random(1).shuffle(indices)
     train_files = [gray_files[i] for i in indices[:int(np.floor(0.7*no_files))]]
     val_files = [gray_files[i] for i in indices[int(np.floor(0.7*no_files)): int(np.floor(0.85*no_files))]]
     test_files = [gray_files[i] for i in indices[int(np.floor(0.85*no_files)):]]
