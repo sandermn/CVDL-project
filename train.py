@@ -127,7 +127,7 @@ def main():
     # CHANGE THESE VALUES TO CHANGE DATASETS
     datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
     curr_dataset = datasets[1]
-    outchannels = 4 #number of classes to segment
+    outputs = 4 #number of classes to segment
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
@@ -172,14 +172,14 @@ def main():
     print(xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and x channels as output
-    unet = Unet2D(1, outchannels)
+    unet = Unet2D(1, outputs)
 
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, acc_metric, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, dice_metric, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
