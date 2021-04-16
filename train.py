@@ -146,11 +146,7 @@ def main():
     transform = transforms.Compose([
         transforms.RandomVerticalFlip(p=0.3)
     ])
-    # Data Augmentation
-    # LEGG TIL NYE METODER FOR AGUMENTATION HER
 
-    # load the training data
-    # CHANGE "trans" TO "preprocess" if applying preprocessing (gaussian blur and isotropic pixel size)
     base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     train_files, val_files, _ = get_random_folder_split(base_path)
     train_dataset = DatasetMedical(base_path / 'train_gray', train_files,
