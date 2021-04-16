@@ -208,23 +208,23 @@ def get_random_folder_split(path):
     return train_files, val_files, test_files
 
 def get_train_val_set(dataset, pre_process, transform):
-    base_path = Path('/work/datasets/medical_project')/dataset
-    train_files, val_files, _ = get_random_folder_split(base_path)
     if dataset == 'CAMUS_resized':
+        base_path = Path('/work/datasets/medical_project')/dataset
+        train_files, val_files, _ = get_random_folder_split(base_path)
         train_dataset = DatasetCAMUS_r(base_path / 'train_gray', train_files,
-                                   base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+                                        base_path / 'train_gt', pre_processing=pre_process, transform=transform)
         valid_dataset = DatasetCAMUS_r(base_path / 'train_gray', val_files,
-                                 base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+                                        base_path / 'train_gt', pre_processing=pre_process, transform=transform)
     elif dataset == 'CAMUS':
-        train_dataset = DatasetCAMUS(base_path / 'train_gray', train_files,
-                                   base_path / 'train_gt', pre_processing=pre_process, transform=transform)
-        valid_dataset = DatasetCAMUS(base_path / 'train_gray', val_files,
-                                 base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+        train_dataset = DatasetCAMUS(Path('data/train'), pre_processing=pre_process, transform=transform)
+        valid_dataset = DatasetCAMUS(Path('data/val'), pre_processing=pre_process, transform=transform)
     elif dataset == 'TEE':
+        base_path = Path('/work/datasets/medical_project')/dataset
+        train_files, val_files, _ = get_random_folder_split(base_path)
         train_dataset = DatasetTEE(base_path / 'train_gray', train_files,
                                    base_path / 'train_gt', pre_processing=pre_process, transform=transform)
         valid_dataset = DatasetTEE(base_path / 'train_gray', val_files,
-                                 base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+                                    base_path / 'train_gt', pre_processing=pre_process, transform=transform)
 
     return train_dataset, valid_dataset
 
