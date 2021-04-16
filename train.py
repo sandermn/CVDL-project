@@ -118,56 +118,36 @@ def predb_to_mask(predb, idx):
 def main():
     # enable if you want to see some plotting
     visual_debug = True
-    params_path = 'models/4ch_50_epochs'
+    params_path = 'models/model_epoch_'
 
     # batch size
-    bs = 4
+    bs = 12
 
     # epochs
-    epochs_val = 50
+    epochs_val = 3
 
     # learning rate
     learn_rate = 0.01
-    
-    # CHANGE THESE VALUES TO CHANGE DATASETS
+
+    # datasets, 0=background+LV, 1=b+LV+M+RV, 2=??
     datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
     curr_dataset = datasets[1]
-    outputs = 4 #number of classes to segment
+    outputs = 4
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
-    
+
     # Preprocessing
     pre_process = transforms.Compose([
-        transforms.GaussianBlur(11, sigma=(1.5, 2.0))
+        # transforms.GaussianBlur(3, sigma=0.1)
     ])
-    # Augmentation
     transform = transforms.Compose([
-        transforms.RandomVerticalFlip(p=0.3)
+        # transforms.RandomVerticalFlip(p=0.3),
+        # transforms.Resize((224,224))
     ])
 
     # load the training data
-    if curr_dataset == 'CAMUS_resized':
-        base_path = Path('/work/datasets/medical_project/CAMUS_resized')
-        train_files, val_files, _ = get_random_folder_split(base_path)
-        train_dataset = DatasetCAMUS_r(base_path / 'train_gray', train_files,
-                                       base_path / 'train_gt', transform=transform, pre_processing=pre_process)
-        valid_dataset = DatasetCAMUS_r(base_path / 'train_gray', val_files,
-                                     base_path / 'train_gt', transform=transform, pre_processing=pre_process)
-    elif curr_dataset == 'CAMUS':
-        base_path = Path('data')
-        train_files, val_files, _ = get_random_folder_split(base_path)
-        train_dataset = DatasetCAMUS(base_path / 'train_gray', train_files,
-                                       base_path / 'train_gt', transform=transform, pre_processing=pre_process)
-        valid_dataset = DatasetCAMUS(base_path / 'train_gray', val_files,
-                                     base_path / 'train_gt', transform=transform, pre_processing=pre_process)
-    elif curr_dataset == 'TEE':
-        base_path = Path('/work/datasets/medical_project/TEE')
-        train_files, val_files, _ = get_random_folder_split(base_path)
-        train_dataset = DatasetTEE(base_path / 'train_gray', train_files,
-                                     base_path / 'train_gt', transform=transform, pre_processing=pre_process)
-        valid_dataset = DatasetTEE(base_path / 'train_gray', val_files,
-                                   base_path / 'train_gt', transform=transform, pre_processing=pre_process)
+    train_dataset, valid_dataset = get_train_val_set(curr_dataset, pre_process, transform)
 
     train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_dl = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
@@ -175,13 +155,14 @@ def main():
     if visual_debug:
         fig, ax = plt.subplots(1, 2)
         ax[0].imshow(train_dataset.open_as_array(150))
-        ax[1].imshow(train_dataset.open_mask(150))
+        mask = train_dataset.open_mask(150)
+        ax[1].imshow(mask)
         plt.show()
 
     xb, yb = next(iter(train_dl))
     print(xb.shape, yb.shape)
 
-    # build the Unet2D with one channel as input and x channels as output
+    # build the Unet2D with one channel as input and 2 channels as output
     unet = Unet2D(1, outputs)
 
     # loss function and optimizer
@@ -189,8 +170,7 @@ def main():
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-
-    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, dice_metric, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -226,6 +206,27 @@ def get_random_folder_split(path):
     val_files = [gray_files[i] for i in indices[int(np.floor(0.7*no_files)): int(np.floor(0.85*no_files))]]
     test_files = [gray_files[i] for i in indices[int(np.floor(0.85*no_files)):]]
     return train_files, val_files, test_files
+
+def get_train_val_set(dataset, pre_process, transform):
+    base_path = Path('/work/datasets/medical_project')/dataset
+    train_files, val_files, _ = get_random_folder_split(base_path)
+    if dataset == 'CAMUS_resized':
+        train_dataset = DatasetCAMUS_r(base_path / 'train_gray', train_files,
+                                   base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+        valid_dataset = DatasetCAMUS_r(base_path / 'train_gray', val_files,
+                                 base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+    elif dataset == 'CAMUS':
+        train_dataset = DatasetCAMUS(base_path / 'train_gray', train_files,
+                                   base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+        valid_dataset = DatasetCAMUS(base_path / 'train_gray', val_files,
+                                 base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+    elif dataset == 'TEE':
+        train_dataset = DatasetTEE(base_path / 'train_gray', train_files,
+                                   base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+        valid_dataset = DatasetTEE(base_path / 'train_gray', val_files,
+                                 base_path / 'train_gt', pre_processing=pre_process, transform=transform)
+
+    return train_dataset, valid_dataset
 
 if __name__ == "__main__":
     main()
