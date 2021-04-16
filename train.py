@@ -96,16 +96,8 @@ def acc_metric(predb, yb):
     return (predb.argmax(dim=1) == yb.cuda()).float().mean()
 
 def dice_metric(predb, yb):
-    # Ventricle = 2, Background = 0
-    segmented = 2 * predb.argmax(dim=1)
-
-    # TP = 2 - 1 = 1, TN = 0 - 0 = 0, FP = 2 - 0 = 2, FN = 0 - 1 = -1
-    conf = segmented - yb
-    TP = (conf == 1).sum()
-    TN = (conf == 0).sum()
-    FP = (conf == 2).sum()
-    FN = (conf == -1).sum()
-    return 2 * TP / (2 * TP + FP + FN)
+    dice_loss = tgm.losses.dice_loss(predb, yb)
+    return 1 - dice_loss
 
 def batch_to_img(xb, idx):
     img = np.array(xb[idx, 0:3])
@@ -133,8 +125,8 @@ def main():
     
     # CHANGE THESE VALUES TO CHANGE DATASETS
     datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
-    curr_dataset = datasets[0]
-    outchannels = 2 #number of classes to segment
+    curr_dataset = datasets[1]
+    outputs = 4 #number of classes to segment
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
@@ -179,14 +171,14 @@ def main():
     print(xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and x channels as output
-    unet = Unet2D(1, outchannels)
+    unet = Unet2D(1, outputs)
 
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, acc_metric, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, dice_metric, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
