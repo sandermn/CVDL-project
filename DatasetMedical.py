@@ -10,14 +10,15 @@ from medimage import image as medim
 
 #load data from CAMUS_resized folder
 class DatasetCAMUS_r(Dataset):
-    def __init__(self, gray_dir, gt_dir, pytorch=True, transform=None):
+    def __init__(self, gray_dir, gray_files, gt_dir, pytorch=True, pre_processing=None, transform=None):
         super().__init__()
         
         # Loop through the files in red folder and combine, into a dictionary, the other bands
         self.files = [self.combine_files(gray_dir/f, gt_dir) for f in gray_files]
         self.pytorch = pytorch
-        self.transform = transform
         self.pre_processing = pre_processing
+        self.transform = transform
+
 
     def combine_files(self, gray_file: Path, gt_dir):
         
@@ -77,14 +78,19 @@ class DatasetCAMUS(Dataset):
     - Medimage reads the files so that they can be used
     - Only use 4CH ED and ES, NOT sequence which is the full sequence of heart contraction
     """
-    def __init__(self, base_path, pytorch=True, transform=None):
+    def __init__(self, base_path, pytorch=True, pre_processing=None, transform=None):
         super().__init__()
         
         # Loop through the files in red folder and combine, into a dictionary, the other bands
         #self.files = [self.combine_files(patient_dir) for patient_dir in base_path.iterdir() if not patient_dir.is_dir() or int(str(patient_dir)[-3:])>450]
-        self.files = [self.combine_files(patient_dir) for patient_dir in base_path.iterdir() if int(str(patient_dir)[-3:])<=450]
+        self.files = [
+            self.combine_files(patient_dir) 
+            for patient_dir in base_path.iterdir() 
+            if int(str(patient_dir)[-3:])<=450
+        ]
         
         self.pytorch = pytorch
+        self.pre_processing = pre_processing
         self.transform = transform
         
     def combine_files(self, patient_dir: Path):
@@ -147,11 +153,12 @@ class DatasetCAMUS(Dataset):
         #get the image and mask as arrays
         x = torch.tensor(self.open_as_array(idx, invert=self.pytorch), dtype=torch.float32)
         y = torch.tensor(self.open_mask(idx, add_dims=False), dtype=torch.torch.int64)
-        
+        if self.pre_processing:
+            x = self.pre_processing(x)
         # transformation
         if self.transform:
             x = self.transform(x)
-            #y = self.transform(y)
+            y = self.transform(y)
         
         return x, y
     
