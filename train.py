@@ -139,8 +139,11 @@ def main():
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
     # Preprocessing
-    # PREPROCESS SKAL GJØRES HER
-    transform_train = transforms.Compose([
+    pre_process = transforms.Compose([
+        transforms.GaussianBlur(11, sigma=(1.5, 2.0))
+    ])
+
+    transform = transforms.Compose([
         transforms.RandomVerticalFlip(p=0.3)
     ])
     # Data Augmentation
@@ -151,22 +154,11 @@ def main():
     base_path = Path('/work/datasets/medical_project/CAMUS_resized')
     train_files, val_files, _ = get_random_folder_split(base_path)
     train_dataset = DatasetMedical(base_path / 'train_gray', train_files,
-                                    base_path / 'train_gt', transform=transform_train, gaussian_blur=True)
+                                    base_path / 'train_gt', transform=transform, pre_processing=pre_process)
     val_dataset = DatasetMedical(base_path / 'train_gray', val_files,
-                                    base_path / 'train_gt', transform=transform_train, gaussian_blur=True)
+                                    base_path / 'train_gt', transform=transform, pre_processing=pre_process)
     print(len(train_dataset))
-    # data = DatasetMedical(base_path / 'train_gray',
-    #                      base_path / 'train_gt', transform=preprocess)
-    # print(len(data))
 
-    # split the training dataset and initialize the data loaders
-    # train_dataset, valid_dataset, _ = torch.utils.data.random_split(
-    #     data,
-    #     (300, 100, 50),
-    #     generator=torch.Generator().manual_seed(42)
-    # )
-    # Overskriver transformen her
-    #train_dataset.dataset.transform = augmentation
     train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_dl = DataLoader(val_dataset, batch_size=bs, shuffle=False)
 
