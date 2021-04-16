@@ -6,11 +6,12 @@ import os
 import random
 from pathlib import Path
 import torch
+import torchgeometry as tgm
 from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
 
-from DatasetMedical import DatasetMedical
+from DatasetMedical import DatasetCAMUS_r, DatasetCAMUS, DatasetTEE
 from Unet2D import Unet2D
 
 
@@ -84,7 +85,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
             print('-' * 10)
 
             train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
-        torch.save(model.state_dict(), params_path + f'{epoch}.pth')
+        #torch.save(model.state_dict(), params_path + f'{epoch}.pth')
     torch.save(model.state_dict(), params_path + 'final.pth')
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
@@ -95,17 +96,9 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
 def acc_metric(predb, yb):
     return (predb.argmax(dim=1) == yb.cuda()).float().mean()
 
-def dice_metric(predb, yb, c):
-    # Ventricle = 2, Background = 0
-    segmented = 2 * predb.argmax(dim=1)
-
-    # TP = 2 - 1 = 1, TN = 0 - 0 = 0, FP = 2 - 0 = 2, FN = 0 - 1 = -1
-    conf = segmented - yb
-    TP = (conf == 1).sum()
-    # TN = (conf == 0).sum()
-    FP = (conf == 2).sum()
-    FN = (conf == -1).sum()
-    return 2 * TP / (2 * TP + FP + FN)
+def dice_metric(predb, yb):
+    dice_loss = tgm.losses.dice_loss(predb, yb)
+    return 1 - dice_loss
 
 def multiclass_dice(predb, yb, num_labels):
     multi_dice = 0
@@ -125,38 +118,59 @@ def predb_to_mask(predb, idx):
 def main():
     # enable if you want to see some plotting
     visual_debug = True
-    params_path = 'models/model_epoch_'
+    params_path = 'models/4ch_50_epochs'
 
     # batch size
-    bs = 12
+    bs = 4
 
     # epochs
     epochs_val = 50
 
     # learning rate
     learn_rate = 0.01
+    
+    # CHANGE THESE VALUES TO CHANGE DATASETS
+    datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
+    curr_dataset = datasets[1]
+    outputs = 4 #number of classes to segment
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
+    
     # Preprocessing
     pre_process = transforms.Compose([
         transforms.GaussianBlur(11, sigma=(1.5, 2.0))
     ])
-
+    # Augmentation
     transform = transforms.Compose([
         transforms.RandomVerticalFlip(p=0.3)
     ])
 
-    base_path = Path('/work/datasets/medical_project/CAMUS_resized')
-    train_files, val_files, _ = get_random_folder_split(base_path)
-    train_dataset = DatasetMedical(base_path / 'train_gray', train_files,
-                                    base_path / 'train_gt', transform=transform, pre_processing=pre_process)
-    val_dataset = DatasetMedical(base_path / 'train_gray', val_files,
-                                    base_path / 'train_gt', transform=transform, pre_processing=pre_process)
-    print(len(train_dataset))
+    # load the training data
+    if curr_dataset == 'CAMUS_resized':
+        base_path = Path('/work/datasets/medical_project/CAMUS_resized')
+        train_files, val_files, _ = get_random_folder_split(base_path)
+        train_dataset = DatasetCAMUS_r(base_path / 'train_gray', train_files,
+                                       base_path / 'train_gt', transform=transform, pre_processing=pre_process)
+        valid_dataset = DatasetCAMUS_r(base_path / 'train_gray', val_files,
+                                     base_path / 'train_gt', transform=transform, pre_processing=pre_process)
+    elif curr_dataset == 'CAMUS':
+        base_path = Path('data')
+        train_files, val_files, _ = get_random_folder_split(base_path)
+        train_dataset = DatasetCAMUS(base_path / 'train_gray', train_files,
+                                       base_path / 'train_gt', transform=transform, pre_processing=pre_process)
+        valid_dataset = DatasetCAMUS(base_path / 'train_gray', val_files,
+                                     base_path / 'train_gt', transform=transform, pre_processing=pre_process)
+    elif curr_dataset == 'TEE':
+        base_path = Path('/work/datasets/medical_project/TEE')
+        train_files, val_files, _ = get_random_folder_split(base_path)
+        train_dataset = DatasetTEE(base_path / 'train_gray', train_files,
+                                     base_path / 'train_gt', transform=transform, pre_processing=pre_process)
+        valid_dataset = DatasetTEE(base_path / 'train_gray', val_files,
+                                   base_path / 'train_gt', transform=transform, pre_processing=pre_process)
 
     train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
-    valid_dl = DataLoader(val_dataset, batch_size=bs, shuffle=False)
+    valid_dl = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
 
     if visual_debug:
         fig, ax = plt.subplots(1, 2)
@@ -167,15 +181,16 @@ def main():
     xb, yb = next(iter(train_dl))
     print(xb.shape, yb.shape)
 
-    # build the Unet2D with one channel as input and 2 channels as output
-    unet = Unet2D(1, 2)
+    # build the Unet2D with one channel as input and x channels as output
+    unet = Unet2D(1, outputs)
 
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, epochs=epochs_val,
+
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, dice_metric, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
