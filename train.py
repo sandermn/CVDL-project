@@ -6,6 +6,7 @@ import time
 
 from pathlib import Path
 import torch
+import torchgeometry as tgm
 from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
@@ -84,7 +85,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
             print('-' * 10)
 
             train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
-        torch.save(model.state_dict(), params_path + f'{epoch}.pth')
+        #torch.save(model.state_dict(), params_path + f'{epoch}.pth')
     torch.save(model.state_dict(), params_path + 'final.pth')
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
@@ -112,13 +113,13 @@ def predb_to_mask(predb, idx):
 def main():
     # enable if you want to see some plotting
     visual_debug = True
-    params_path = 'models/model_epoch_'
+    params_path = 'models/4ch_50_epochs'
 
     # batch size
-    bs = 12
+    bs = 4
 
     # epochs
-    epochs_val = 3
+    epochs_val = 50
 
     # learning rate
     learn_rate = 0.01
@@ -142,7 +143,7 @@ def main():
         base_path = Path('/work/datasets/medical_project/CAMUS_resized')
         data = DatasetCAMUS_r(base_path / 'train_gray', base_path / 'train_gt', transform=preprocess)
     elif curr_dataset == 'CAMUS':
-        base_path = Path('/work/datasets/medical_project/CAMUS')
+        base_path = Path('data')
         data = DatasetCAMUS(base_path, transform=preprocess)
     elif curr_dataset == 'TEE':
         base_path = Path('/work/datasets/medical_project/TEE')
