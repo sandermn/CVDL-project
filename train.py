@@ -10,7 +10,7 @@ import torchgeometry as tgm
 from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
-
+from helpers import get_train_val_set
 from DatasetMedical import DatasetCAMUS_r, DatasetCAMUS, DatasetTEE
 from Unet2D import Unet2D
 
@@ -121,10 +121,10 @@ def main():
     params_path = 'models/model_epoch_'
 
     # batch size
-    bs = 12
+    bs = 4
 
     # epochs
-    epochs_val = 3
+    epochs_val = 10
 
     # learning rate
     learn_rate = 0.01
@@ -139,7 +139,7 @@ def main():
 
     # Preprocessing
     pre_process = transforms.Compose([
-        # transforms.GaussianBlur(3, sigma=0.1)
+        transforms.GaussianBlur(3, sigma=(0.1,1))
     ])
     transform = transforms.Compose([
         # transforms.RandomVerticalFlip(p=0.3),
@@ -195,38 +195,6 @@ def main():
             ax[i, 2].imshow(predb_to_mask(predb, i))
 
         plt.show()
-
-def get_random_folder_split(path):
-    x_path = path / 'train_gray'
-    gray_files = os.listdir(x_path)
-    no_files = len(gray_files)
-    indices = list(range(no_files))
-    random.Random(1).shuffle(indices)
-    train_files = [gray_files[i] for i in indices[:int(np.floor(0.7*no_files))]]
-    val_files = [gray_files[i] for i in indices[int(np.floor(0.7*no_files)): int(np.floor(0.85*no_files))]]
-    test_files = [gray_files[i] for i in indices[int(np.floor(0.85*no_files)):]]
-    return train_files, val_files, test_files
-
-def get_train_val_set(dataset, pre_process, transform):
-    if dataset == 'CAMUS_resized':
-        base_path = Path('/work/datasets/medical_project')/dataset
-        train_files, val_files, _ = get_random_folder_split(base_path)
-        train_dataset = DatasetCAMUS_r(base_path / 'train_gray', train_files,
-                                        base_path / 'train_gt', pre_processing=pre_process, transform=transform)
-        valid_dataset = DatasetCAMUS_r(base_path / 'train_gray', val_files,
-                                        base_path / 'train_gt', pre_processing=pre_process, transform=transform)
-    elif dataset == 'CAMUS':
-        train_dataset = DatasetCAMUS(Path('data/train'), pre_processing=pre_process, transform=transform)
-        valid_dataset = DatasetCAMUS(Path('data/val'), pre_processing=pre_process, transform=transform)
-    elif dataset == 'TEE':
-        base_path = Path('/work/datasets/medical_project')/dataset
-        train_files, val_files, _ = get_random_folder_split(base_path)
-        train_dataset = DatasetTEE(base_path / 'train_gray', train_files,
-                                   base_path / 'train_gt', pre_processing=pre_process, transform=transform)
-        valid_dataset = DatasetTEE(base_path / 'train_gray', val_files,
-                                    base_path / 'train_gt', pre_processing=pre_process, transform=transform)
-
-    return train_dataset, valid_dataset
 
 if __name__ == "__main__":
     main()
