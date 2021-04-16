@@ -133,8 +133,8 @@ def main():
     
     # CHANGE THESE VALUES TO CHANGE DATASETS
     datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
-    curr_dataset = datasets[1]
-    outchannels = 4 #number of classes to segment
+    curr_dataset = datasets[0]
+    outchannels = 2 #number of classes to segment
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
