@@ -19,7 +19,7 @@ class DatasetCAMUS_r(Dataset):
         self.pytorch = pytorch
         self.pre_processing = pre_processing
         self.transform = transform
-        
+
     def combine_files(self, gray_file: Path, gt_dir):
 
         files = {'gray': gray_file,
