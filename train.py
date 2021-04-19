@@ -1,16 +1,17 @@
 import numpy as np
-import pandas as pd
 import matplotlib as mp
 import matplotlib.pyplot as plt
 import time
-
+import os
+import random
 from pathlib import Path
 import torch
+import torchgeometry as tgm
 from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
-
-from DatasetMedical import DatasetMedical
+from helpers import get_train_val_set
+from DatasetMedical import DatasetCAMUS_r, DatasetCAMUS, DatasetTEE
 from Unet2D import Unet2D
 
 
@@ -84,7 +85,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
             print('-' * 10)
 
             train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
-        torch.save(model.state_dict(), params_path + f'{epoch}.pth')
+        #torch.save(model.state_dict(), params_path + f'{epoch}.pth')
     torch.save(model.state_dict(), params_path + 'final.pth')
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
@@ -96,16 +97,13 @@ def acc_metric(predb, yb):
     return (predb.argmax(dim=1) == yb.cuda()).float().mean()
 
 def dice_metric(predb, yb):
-    # Ventricle = 2, Background = 0
-    segmented = 2 * predb.argmax(dim=1)
+    dice_loss = tgm.losses.dice_loss(predb, yb)
+    return 1 - dice_loss
 
-    # TP = 2 - 1 = 1, TN = 0 - 0 = 0, FP = 2 - 0 = 2, FN = 0 - 1 = -1
-    conf = segmented - yb
-    TP = (conf == 1).sum()
-    TN = (conf == 0).sum()
-    FP = (conf == 2).sum()
-    FN = (conf == -1).sum()
-    return 2 * TP / (2 * TP + FP + FN)
+def multiclass_dice(predb, yb, num_labels):
+    multi_dice = 0
+    for i in range(num_labels):
+        multi_dice += dice_metric(predb, yb, i)
 
 def batch_to_img(xb, idx):
     img = np.array(xb[idx, 0:3])
@@ -123,63 +121,56 @@ def main():
     params_path = 'models/model_epoch_'
 
     # batch size
-    bs = 12
+    bs = 4
 
     # epochs
-    epochs_val = 2
+    epochs_val = 10
 
     # learning rate
     learn_rate = 0.01
 
+    # datasets, 0=background+LV, 1=b+LV+M+RV, 2=??
+    datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
+    curr_dataset = datasets[1]
+    outputs = 4
+
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
+
     # Preprocessing
-    # PREPROCESS SKAL GJØRES HER
-    # preprocess = transforms.Compose(
-    #     Gaussian smoothing
-    # )
-    # Data Augmentation
-    # LEGG TIL NYE METODER FOR AGUMENTATION HER
-    trans = transforms.Compose([
-        transforms.RandomVerticalFlip(p=0.3)
+    pre_process = transforms.Compose([
+        transforms.GaussianBlur(3, sigma=(0.1,1))
+    ])
+    transform = transforms.Compose([
+        # transforms.RandomVerticalFlip(p=0.3),
+        # transforms.Resize((224,224))
     ])
 
     # load the training data
-    # CHANGE "trans" TO "preprocess" if applying preprocessing (gaussian blur and isotropic pixel size)
-    base_path = Path('/work/datasets/medical_project/CAMUS_resized')
-    data = DatasetMedical(base_path / 'train_gray',
-                         base_path / 'train_gt', transform=trans)
-    print(len(data))
+    train_dataset, valid_dataset = get_train_val_set(curr_dataset, pre_process, transform)
 
-    # split the training dataset and initialize the data loaders
-    train_dataset, valid_dataset, _ = torch.utils.data.random_split(
-        data,
-        (300, 100, 50),
-        generator=torch.Generator().manual_seed(42)
-    )
-    # Overskriver transformen her
-    train_dataset.transform = trans
-    train_data = DataLoader(train_dataset, batch_size=bs, shuffle=True)
-    valid_data = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
+    train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
+    valid_dl = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
 
     if visual_debug:
         fig, ax = plt.subplots(1, 2)
-        ax[0].imshow(data.open_as_array(150))
-        ax[1].imshow(data.open_mask(150))
+        ax[0].imshow(train_dataset.open_as_array(150))
+        mask = train_dataset.open_mask(150)
+        ax[1].imshow(mask)
         plt.show()
 
-    xb, yb = next(iter(train_data))
+    xb, yb = next(iter(train_dl))
     print(xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and 2 channels as output
-    unet = Unet2D(1, 2)
+    unet = Unet2D(1, outputs)
 
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-    train_loss, valid_loss = train(unet, train_data, valid_data, loss_fn, opt, acc_metric, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -191,7 +182,7 @@ def main():
         plt.show()
 
     # predict on the next train batch (is this fair?)
-    xb, yb = next(iter(train_data))
+    xb, yb = next(iter(train_dl))
     with torch.no_grad():
         predb = unet(xb.cuda())
 
@@ -204,7 +195,6 @@ def main():
             ax[i, 2].imshow(predb_to_mask(predb, i))
 
         plt.show()
-
 
 if __name__ == "__main__":
     main()

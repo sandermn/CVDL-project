@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from torchvision import transforms
 
 class Unet2D(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -15,6 +16,7 @@ class Unet2D(nn.Module):
 
     def __call__(self, x):
         # downsampling part
+        #print(size(x))
         conv1 = self.conv1(x)
         conv2 = self.conv2(conv1)
         conv3 = self.conv3(conv2)
