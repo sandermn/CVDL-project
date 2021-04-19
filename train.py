@@ -86,7 +86,9 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
 
             train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
         #torch.save(model.state_dict(), params_path + f'{epoch}.pth')
-    torch.save(model.state_dict(), params_path + 'final.pth')
+    if params_path:
+        params_path.mkdir(parents=True, exist_ok=True)
+        torch.save(model.state_dict(), params_path/'final.pth')
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
@@ -115,39 +117,22 @@ def predb_to_mask(predb, idx):
     return p.argmax(0).cpu()
 
 
-def main(ckpt):
+def main(
+    visual_debug=False, 
+    params_path=None, 
+    bs=44, 
+    epochs_val=10, 
+    learn_rate=0.01, 
+    ckpt=None,
+    dataset='CAMUS',
+    outputs=4,
+    pre_process=None,
+    transform=None
+    ):
     # enable if you want to see some plotting
-    visual_debug = True
-    params_path = 'models/model_epoch_'
-
-    # batch size
-    bs = 4
-
-    # epochs
-    epochs_val = 1
-
-    # learning rate
-    learn_rate = 0.01
-
-    # datasets, 0=background+LV, 1=b+LV+M+RV, 2=??
-    datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
-    curr_dataset = datasets[1]
-    outputs = 4
-
-    # sets the matplotlib display backend (most likely not needed)
-    # mp.use('TkAgg', force=True)
-
-    # Preprocessing
-    pre_process = transforms.Compose([
-        #transforms.GaussianBlur(3, sigma=(0.1,1))
-    ])
-    transform = transforms.Compose([
-        # transforms.RandomVerticalFlip(p=0.3),
-        #transforms.Resize((224,224))
-    ])
-
+    
     # load the training data
-    train_dataset, valid_dataset = get_train_val_set(curr_dataset, pre_process, transform)
+    train_dataset, valid_dataset = get_train_val_set(dataset, pre_process, transform)
 
     train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_dl = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
@@ -198,5 +183,41 @@ def main(ckpt):
         plt.show()
 
 if __name__ == "__main__":
-    ckpt = 'models/4ch_50_epochsfinal.pth'
-    main(ckpt)
+    # Visual Debug
+    visual_debug = True
+    
+    # Model Save Path
+    # Use models/custom
+    params_path = Path('models/base')
+
+    # batch size
+    bs = 4
+
+    # epochs
+    epochs_val = 2
+
+    # learning rate
+    learn_rate = 0.01
+
+    # Preprocessing
+    pre_process = transforms.Compose([
+        #transforms.GaussianBlur(3, sigma=(0.1,1))
+    ])
+    transform = transforms.Compose([
+        # transforms.RandomVerticalFlip(p=0.3),
+        # transforms.Resize((224,224))
+    ])
+
+    #ckpt = 'models/4ch_50_epochsfinal.pth'
+    main(
+        visual_debug=visual_debug,
+        bs=bs,
+        params_path=params_path,
+        epochs_val=epochs_val,
+        learn_rate=learn_rate,
+        dataset='CAMUS',
+        outputs=4,
+        pre_process=pre_process,
+        transform=transform,
+        ckpt=None
+    )
