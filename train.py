@@ -21,7 +21,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
     train_loss, valid_loss = [], []
 
-    best_acc = 0.0
+    best_loss = 10
     es_counter = 0
 
     for epoch in range(epochs):
@@ -84,26 +84,28 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             epoch_acc = running_acc / len(dataloader.dataset)
             epoch_dice = running_dice /len(dataloader.dataset)
 
-            if acc > best_acc:
-                best_acc = epoch_acc
-                es_counter = 0
-                
-            es_counter += 1
-            if (es_counter > 5):
-                print(f'Early Stopped after epoch {epoch}')
-                break
+            
             print('Epoch {}/{}'.format(epoch, epochs - 1))
             print('-' * 10)
-            print('{} Loss: {:.4f} Acc: {}'.format(phase, epoch_loss, epoch_acc))
+            print('{} Loss: {:.4f} Acc: {} Dice: {}'.format(phase, epoch_loss, epoch_acc, epoch_dice))
             print('-' * 10)
 
             train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
         #torch.save(model.state_dict(), params_path + f'{epoch}.pth')
+        if epoch_loss < best_loss:
+            best_loss = epoch_loss
+            es_counter = 0
+            best_model = model.state_dict()
+            
+        es_counter += 1
+        if (es_counter > 10):
+            print(f'Early stopped after epoch {epoch}')
+            break
     if params_path:
         params_path.mkdir(parents=True, exist_ok=True)
-        torch.save(model.state_dict(), params_path/'final.pth')
+        torch.save(best_model, params_path/'final.pth')
         f = open(params_path / 'config.txt', 'w')
-        f.write(f'bs: {bs},\nepochs: {epochs_val},\nlearn_rate: {learn_rate},\nloss: {epoch_loss},\nacc: {epoch_acc},\n dice:{epoch_dice}')
+        f.write(f'bs: {bs},\nepochs: {epoch},\nlearn_rate: {learn_rate},\nloss: {epoch_loss},\nacc: {epoch_acc},\ndice:{epoch_dice}')
         f.close()
 
     time_elapsed = time.time() - start
@@ -200,7 +202,7 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/base')
+    params_path = Path('models/gaussian_blur_ks9')
 
     # batch size
     bs = 4
@@ -213,7 +215,7 @@ if __name__ == "__main__":
 
     # Preprocessing
     pre_process = transforms.Compose([
-        #transforms.GaussianBlur(3, sigma=(0.1,1))
+        transforms.GaussianBlur(9, sigma=(0.1,1))
     ])
     transform = transforms.Compose([
         # transforms.RandomVerticalFlip(p=0.3),
