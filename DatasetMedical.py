@@ -78,23 +78,27 @@ class DatasetCAMUS(Dataset):
     - Medimage reads the files so that they can be used
     - Only use 4CH ED and ES, NOT sequence which is the full sequence of heart contraction
     """
-    def __init__(self, base_path, pytorch=True, transform=None):
+    def __init__(self, base_path, pytorch=True, transform=None, isotropic=False, include_es=False):
         super().__init__()
         
         # Loop through the files in red folder and combine, into a dictionary, the other bands
-        #self.files = [self.combine_files(patient_dir) for patient_dir in base_path.iterdir() if not patient_dir.is_dir() or int(str(patient_dir)[-3:])>450]
-        self.files = [self.combine_files(patient_dir) for patient_dir in base_path.iterdir() if int(str(patient_dir)[-3:])<=450]
+        self.files = [self.combine_files(patient_dir, 'ED') for patient_dir in base_path.iterdir() if int(str(patient_dir)[-3:])<=450]
+        
+        if include_es:
+            es_files = [self.combine_files(patient_dir, 'ES') for patient_dir in base_path.iterdir() if int(str(patient_dir)[-3:])<=450]
+            self.files.extend(es_files)
         
         self.pytorch = pytorch
         self.transform = transform
+        self.isotropic = isotropic
         
-    def combine_files(self, patient_dir: Path):
+    def combine_files(self, patient_dir: Path, value: str):
         """
         Gray and gt points to the metaheader file for each photo. 
         This file contains information about the file that can be useful
         """
-        files = {'gray': medim(patient_dir/f"{str(patient_dir)[-11:]}_4CH_ED.mhd"), 
-                 'gt': medim(patient_dir/f"{str(patient_dir)[-11:]}_4CH_ED_gt.mhd")}
+        files = {'gray': medim(patient_dir/f"{str(patient_dir)[-11:]}_4CH_{value}.mhd"), 
+                 'gt': medim(patient_dir/f"{str(patient_dir)[-11:]}_4CH_{value}_gt.mhd")}
         
         return files
                                        
@@ -107,8 +111,13 @@ class DatasetCAMUS(Dataset):
         im = self.files[idx]['gray']
         arr = np.array(im.imdata)
         pil_im = ToPILImage()(arr)
-        pil_im = self.resize_image(pil_im)
         
+        if self.isotropic:
+            pil_isotropic = pil_im.resize((pil_im.size[0], pil_im.size[1]//2))
+            pil_im = Image.new(pil_im.mode, (1945, 1945), 0)
+            pil_im.paste(pil_isotropic)
+            
+        pil_im = self.resize_image(pil_im)
         raw_us = np.stack([np.array(pil_im),], axis=2)
         
         if invert:
@@ -125,18 +134,15 @@ class DatasetCAMUS(Dataset):
         # create array of mask and resize
         arr = np.array(im.imdata)
         pil_im = ToPILImage()(arr)
+        
+        if self.isotropic:
+            pil_isotropic = pil_im.resize((pil_im.size[0], pil_im.size[1]//2))
+            pil_im = Image.new(pil_im.mode, (1945, 1945), 0)
+            pil_im.paste(pil_isotropic)
+        
         pil_im = self.resize_image(pil_im)
         raw_mask = np.array(pil_im) # a numpy array with unique values [0,1,2,3]
-        
-        # raw_mask is (384,384) array, create array with 3 channels (384,384, 3)
-        
-        """
-        mask = np.zeros(np.concatenate((3, np.shape(raw_mask)),axis=None))
-        mask[0,:,:] = mask[0,:,:] + np.where(raw_mask==1, 1, 0)
-        mask[1,:,:] = mask[1,:,:] + np.where(raw_mask==2, 1, 0)
-        mask[2,:,:] = mask[2,:,:] + np.where(raw_mask==3, 1, 0)
-        """
-        
+
         return raw_mask
     
     

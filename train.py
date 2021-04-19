@@ -128,6 +128,8 @@ def main():
     datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
     curr_dataset = datasets[1]
     outputs = 4 #number of classes to segment
+    isotropic = False
+    include_es = True
 
     # sets the matplotlib display backend (most likely not needed)
     # mp.use('TkAgg', force=True)
@@ -143,8 +145,8 @@ def main():
         base_path = Path('/work/datasets/medical_project/CAMUS_resized')
         data = DatasetCAMUS_r(base_path / 'train_gray', base_path / 'train_gt', transform=preprocess)
     elif curr_dataset == 'CAMUS':
-        base_path = Path('data')
-        data = DatasetCAMUS(base_path, transform=preprocess)
+        base_path = Path('/work/datasets/medical_project/CAMUS')
+        data = DatasetCAMUS(base_path, transform=preprocess, isotropic=isotropic, include_es=include_es)
     elif curr_dataset == 'TEE':
         base_path = Path('/work/datasets/medical_project/TEE')
         data = DatasetTEE()
@@ -152,7 +154,7 @@ def main():
         
     print(len(data))
 
-    # split the training dataset and initialize the data loaders
+    # split the training dataset and initialize the data loaders (resize values if include_es=True)
     train_dataset, valid_dataset, _ = torch.utils.data.random_split(
         data,
         (300, 100, 50),
