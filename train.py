@@ -115,7 +115,7 @@ def predb_to_mask(predb, idx):
     return p.argmax(0).cpu()
 
 
-def main():
+def main(ckpt):
     # enable if you want to see some plotting
     visual_debug = True
     params_path = 'models/model_epoch_'
@@ -124,7 +124,7 @@ def main():
     bs = 4
 
     # epochs
-    epochs_val = 10
+    epochs_val = 1
 
     # learning rate
     learn_rate = 0.01
@@ -139,11 +139,11 @@ def main():
 
     # Preprocessing
     pre_process = transforms.Compose([
-        transforms.GaussianBlur(3, sigma=(0.1,1))
+        #transforms.GaussianBlur(3, sigma=(0.1,1))
     ])
     transform = transforms.Compose([
         # transforms.RandomVerticalFlip(p=0.3),
-        # transforms.Resize((224,224))
+        #transforms.Resize((224,224))
     ])
 
     # load the training data
@@ -164,7 +164,8 @@ def main():
 
     # build the Unet2D with one channel as input and 2 channels as output
     unet = Unet2D(1, outputs)
-
+    if ckpt:
+        unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
@@ -197,4 +198,5 @@ def main():
         plt.show()
 
 if __name__ == "__main__":
-    main()
+    ckpt = 'models/4ch_50_epochsfinal.pth'
+    main(ckpt)
