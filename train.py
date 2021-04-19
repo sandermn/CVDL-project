@@ -15,13 +15,14 @@ from DatasetMedical import DatasetCAMUS_r, DatasetCAMUS, DatasetTEE
 from Unet2D import Unet2D
 
 
-def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, epochs=1):
+def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params_path, epochs=1):
     start = time.time()
     model.cuda()
 
     train_loss, valid_loss = [], []
 
     best_acc = 0.0
+    es_counter = 0
 
     for epoch in range(epochs):
         print('Epoch {}/{}'.format(epoch, epochs - 1))
@@ -37,6 +38,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
 
             running_loss = 0.0
             running_acc = 0.0
+            running_dice = 0.0
 
             step = 0
 
@@ -52,7 +54,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
                     optimizer.zero_grad()
                     outputs = model(x)
                     loss = loss_fn(outputs, y)
-
+            
                     # the backward pass frees the graph memory, so there is no 
                     # need for torch.no_grad in this training pass
                     loss.backward()
@@ -66,9 +68,11 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
 
                 # stats - whatever is the phase
                 acc = acc_fn(outputs, y)
+                dice = dice_fn(outputs, y)
 
                 running_acc += acc * dataloader.batch_size
                 running_loss += loss * dataloader.batch_size
+                running_dice += dice * dataloader.batch_size
 
                 if step % 100 == 0:
                     # clear_output(wait=True)
@@ -78,7 +82,16 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
 
             epoch_loss = running_loss / len(dataloader.dataset)
             epoch_acc = running_acc / len(dataloader.dataset)
+            epoch_dice = running_dice /len(dataloader.dataset)
 
+            if acc > best_acc:
+                best_acc = epoch_acc
+                es_counter = 0
+                
+            es_counter += 1
+            if (es_counter > 5):
+                print(f'Early Stopped after epoch {epoch}')
+                break
             print('Epoch {}/{}'.format(epoch, epochs - 1))
             print('-' * 10)
             print('{} Loss: {:.4f} Acc: {}'.format(phase, epoch_loss, epoch_acc))
@@ -86,7 +99,13 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, params_path, ep
 
             train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
         #torch.save(model.state_dict(), params_path + f'{epoch}.pth')
-    torch.save(model.state_dict(), params_path + 'final.pth')
+    if params_path:
+        params_path.mkdir(parents=True, exist_ok=True)
+        torch.save(model.state_dict(), params_path/'final.pth')
+        f = open(params_path / 'config.txt', 'w')
+        f.write(f'bs: {bs},\nepochs: {epochs_val},\nlearn_rate: {learn_rate},\nloss: {epoch_loss},\nacc: {epoch_acc},\n dice:{epoch_dice}')
+        f.close()
+
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
@@ -100,11 +119,6 @@ def dice_metric(predb, yb):
     dice_loss = tgm.losses.dice_loss(predb, yb)
     return 1 - dice_loss
 
-def multiclass_dice(predb, yb, num_labels):
-    multi_dice = 0
-    for i in range(num_labels):
-        multi_dice += dice_metric(predb, yb, i)
-
 def batch_to_img(xb, idx):
     img = np.array(xb[idx, 0:3])
     return img.transpose((1, 2, 0))
@@ -115,39 +129,22 @@ def predb_to_mask(predb, idx):
     return p.argmax(0).cpu()
 
 
-def main(ckpt):
+def main(
+    visual_debug=False, 
+    params_path=None, 
+    bs=4, 
+    epochs_val=10, 
+    learn_rate=0.01, 
+    ckpt=None,
+    dataset='CAMUS',
+    outputs=4,
+    pre_process=None,
+    transform=None
+    ):
     # enable if you want to see some plotting
-    visual_debug = True
-    params_path = 'models/model_epoch_'
-
-    # batch size
-    bs = 4
-
-    # epochs
-    epochs_val = 1
-
-    # learning rate
-    learn_rate = 0.01
-
-    # datasets, 0=background+LV, 1=b+LV+M+RV, 2=??
-    datasets = ['CAMUS_resized', 'CAMUS', 'TEE']
-    curr_dataset = datasets[1]
-    outputs = 4
-
-    # sets the matplotlib display backend (most likely not needed)
-    # mp.use('TkAgg', force=True)
-
-    # Preprocessing
-    pre_process = transforms.Compose([
-        #transforms.GaussianBlur(3, sigma=(0.1,1))
-    ])
-    transform = transforms.Compose([
-        # transforms.RandomVerticalFlip(p=0.3),
-        #transforms.Resize((224,224))
-    ])
-
+    
     # load the training data
-    train_dataset, valid_dataset = get_train_val_set(curr_dataset, pre_process, transform)
+    train_dataset, valid_dataset = get_train_val_set(dataset, pre_process, transform)
 
     train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_dl = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
@@ -171,7 +168,7 @@ def main(ckpt):
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
-    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_metric, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -194,9 +191,45 @@ def main(ckpt):
             ax[i, 0].imshow(batch_to_img(xb, i))
             ax[i, 1].imshow(yb[i])
             ax[i, 2].imshow(predb_to_mask(predb, i))
-
         plt.show()
+        fig.savefig(params_path/'predictions.png')
 
 if __name__ == "__main__":
-    ckpt = 'models/4ch_50_epochsfinal.pth'
-    main(ckpt)
+    # Visual Debug
+    visual_debug = True
+    
+    # Model Save Path
+    # Use models/custom
+    params_path = Path('models/base')
+
+    # batch size
+    bs = 4
+
+    # epochs
+    epochs_val = 50
+
+    # learning rate
+    learn_rate = 0.01
+
+    # Preprocessing
+    pre_process = transforms.Compose([
+        #transforms.GaussianBlur(3, sigma=(0.1,1))
+    ])
+    transform = transforms.Compose([
+        # transforms.RandomVerticalFlip(p=0.3),
+        # transforms.Resize((224,224))
+    ])
+
+    #ckpt = 'models/4ch_50_epochsfinal.pth'
+    main(
+        visual_debug=visual_debug,
+        bs=bs,
+        params_path=params_path,
+        epochs_val=epochs_val,
+        learn_rate=learn_rate,
+        dataset='CAMUS',
+        outputs=4,
+        pre_process=pre_process,
+        transform=transform,
+        ckpt=None
+    )
