@@ -78,28 +78,37 @@ class DatasetCAMUS(Dataset):
     - Only use 4CH ED and ES, NOT sequence which is the full sequence of heart contraction
     """
 
-    def __init__(self, base_path, pytorch=True, pre_processing=None, transform=None):
+    def __init__(self, base_path, pytorch=True, pre_processing=None, transform=None, isotropic=False, include_es=True, start=1, stop=300):
         super().__init__()
 
         # Loop through the files in red folder and combine, into a dictionary, the other bands
-        # self.files = [self.combine_files(patient_dir) for patient_dir in base_path.iterdir() if not patient_dir.is_dir() or int(str(patient_dir)[-3:])>450]
+        print(str(base_path))
         self.files = [
-            self.combine_files(patient_dir)
-            for patient_dir in base_path.iterdir()
-            if int(str(patient_dir)[-3:]) <= 450
-        ]
+            self.combine_files(patient_dir, 'ED')
+            for patient_dir in base_path.iterdir() 
+            if int(str(patient_dir)[-3:]) >= start 
+            and int(str(patient_dir)[-3:]) <=stop
+            ]
+        
+        if include_es:
+            es_files = [
+                self.combine_files(patient_dir, 'ES') 
+                for patient_dir in base_path.iterdir() 
+                if int(str(patient_dir)[-3:]) >= start 
+                and int(str(patient_dir)[-3:]) <=stop]
+            self.files.extend(es_files)
 
         self.pytorch = pytorch
         self.pre_processing = pre_processing
         self.transform = transform
 
-    def combine_files(self, patient_dir: Path):
+    def combine_files(self, patient_dir: Path, value: str):
         """
         Gray and gt points to the metaheader file for each photo.
         This file contains information about the file that can be useful
         """
-        files = {'gray': medim(patient_dir / f"{str(patient_dir)[-11:]}_4CH_ED.mhd"),
-                 'gt': medim(patient_dir / f"{str(patient_dir)[-11:]}_4CH_ED_gt.mhd")}
+        files = {'gray': medim(patient_dir / f"{str(patient_dir)[-11:]}_4CH_{value}.mhd"),
+                 'gt': medim(patient_dir / f"{str(patient_dir)[-11:]}_4CH_{value}_gt.mhd")}
 
         return files
 

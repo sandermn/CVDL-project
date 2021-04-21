@@ -141,13 +141,14 @@ def main(
     dataset='CAMUS',
     outputs=4,
     pre_process=None,
-    transform=None
+    transform=None,
+    isotropic=False,
+    include_es=True
     ):
     # enable if you want to see some plotting
     
     # load the training data
-    train_dataset, valid_dataset = get_train_val_set(dataset, pre_process, transform)
-
+    train_dataset, valid_dataset = get_train_val_set(dataset, pre_process, transform, isotropic, include_es)
     train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_dl = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
 
@@ -204,14 +205,15 @@ if __name__ == "__main__":
     # Use models/custom
     params_path = Path('models/gaussian_blur_ks9')
 
-    # batch size
+    # parameters
     bs = 4
-
-    # epochs
     epochs_val = 50
-
-    # learning rate
     learn_rate = 0.01
+    dataset = 'CAMUS'
+    outputs = 4
+    ckpt = None
+    isotropic = False
+    include_es = True
 
     # Preprocessing
     pre_process = transforms.Compose([
@@ -229,9 +231,11 @@ if __name__ == "__main__":
         params_path=params_path,
         epochs_val=epochs_val,
         learn_rate=learn_rate,
-        dataset='CAMUS',
-        outputs=4,
+        dataset=dataset,
+        outputs=outputs,
         pre_process=pre_process,
         transform=transform,
-        ckpt=None
+        ckpt=ckpt,
+        isotropic=isotropic,
+        include_es=include_es
     )
