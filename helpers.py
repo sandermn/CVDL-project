@@ -14,7 +14,7 @@ def get_random_folder_split(path):
     test_files = [gray_files[i] for i in indices[int(np.floor(0.85*no_files)):]]
     return train_files, val_files, test_files
 
-def get_train_val_set(dataset, pre_process, transform, isotropic, include_es):
+def get_train_val_set(dataset, is_local, pre_process, transform, isotropic, include_es, include_2ch):
     base_path = Path('/work/datasets/medical_project')/dataset
     
     if dataset == 'CAMUS_resized': 
@@ -24,10 +24,18 @@ def get_train_val_set(dataset, pre_process, transform, isotropic, include_es):
         valid_dataset = DatasetCAMUS_r(base_path / 'train_gray', val_files,
                                         base_path / 'train_gt', pre_processing=pre_process, transform=transform)
     elif dataset == 'CAMUS':
-        base_path = Path('data/')
-        train_dataset = DatasetCAMUS(base_path, pre_processing=pre_process, transform=transform, isotropic=isotropic, include_es=include_es, start=1, stop=300)
-        valid_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, start=301, stop=400)
-        test_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, start=401, stop=450)
+        base_path = Path('/data') if is_local else base_path
+        train_dataset = DatasetCAMUS(
+            base_path,
+            pre_processing=pre_process,
+            transform=transform,
+            isotropic=isotropic,
+            include_es=include_es,
+            include_2ch=include_2ch,
+            start=1,
+            stop=300)
+        valid_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, start=301, stop=400)
+        test_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, start=401, stop=450)
     elif dataset == 'TEE':
         train_files, val_files, _ = get_random_folder_split(base_path)
         train_dataset = DatasetTEE(base_path / 'train_gray', train_files,
@@ -35,4 +43,4 @@ def get_train_val_set(dataset, pre_process, transform, isotropic, include_es):
         valid_dataset = DatasetTEE(base_path / 'train_gray', val_files,
                                     base_path / 'train_gt', pre_processing=pre_process, transform=transform)
 
-    return train_dataset, valid_dataset
+    return train_dataset, valid_dataset, test_dataset

@@ -85,7 +85,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             epoch_dice = running_dice /len(dataloader.dataset)
 
             
-            print('Epoch {}/{}'.format(epoch, epochs - 1))
+            print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
             print('{} Loss: {:.4f} Acc: {} Dice: {}'.format(phase, epoch_loss, epoch_acc, epoch_dice))
             print('-' * 10)
@@ -143,14 +143,18 @@ def main(
     pre_process=None,
     transform=None,
     isotropic=False,
-    include_es=True
+    include_es=True,
+    is_local=False,
+    include_2ch=True
     ):
     # enable if you want to see some plotting
     
     # load the training data
-    train_dataset, valid_dataset = get_train_val_set(dataset, pre_process, transform, isotropic, include_es)
+    train_dataset, valid_dataset, _ = get_train_val_set(dataset, is_local, pre_process, transform, isotropic, include_es, include_2ch)
     train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_dl = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
+    
+    print(f'Size of train dataset: {len(train_dataset)}\nSize of validation dataset: {len(valid_dataset)}')
 
     if visual_debug:
         fig, ax = plt.subplots(1, 2)
@@ -207,13 +211,15 @@ if __name__ == "__main__":
 
     # parameters
     bs = 4
-    epochs_val = 50
+    epochs_val = 2
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4
     ckpt = None
     isotropic = False
     include_es = True
+    is_local = False
+    include_2ch = True
 
     # Preprocessing
     pre_process = transforms.Compose([
@@ -237,5 +243,7 @@ if __name__ == "__main__":
         transform=transform,
         ckpt=ckpt,
         isotropic=isotropic,
-        include_es=include_es
+        include_es=include_es,
+        is_local=is_local,
+        include_2ch=include_2ch
     )
