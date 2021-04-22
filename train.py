@@ -225,10 +225,10 @@ if __name__ == "__main__":
     dataset = 'CAMUS'
     outputs = 4
     ckpt = None
-    isotropic = True
+    isotropic = False
     include_es = False
     is_local = False
-    include_2ch = False
+    include_2ch = True
 
     # Preprocessing
     pre_process = transforms.Compose([
