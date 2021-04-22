@@ -55,9 +55,8 @@ class DatasetCAMUS_r(Dataset):
             x = self.pre_processing(x)
         # Transformation
         if self.transform:
-            x = self.transform(x)
-            y = self.transform(y)
-
+            x = self.transform(image=x)
+            y = self.transform(image=y)
         return x, y
 
     def get_as_pil(self, idx):
@@ -113,12 +112,9 @@ class DatasetCAMUS(Dataset):
         arr = np.array(im.imdata)
         pil_im = ToPILImage()(arr)
         pil_im = self.resize_image(pil_im)
-
         raw_us = np.stack([np.array(pil_im), ], axis=2)
-
         if invert:
             raw_us = raw_us.transpose((2, 0, 1))
-
         # normalize
         return (raw_us / np.iinfo(raw_us.dtype).max)
 
@@ -150,6 +146,9 @@ class DatasetCAMUS(Dataset):
         # get the image and mask as arrays
         x = torch.tensor(self.open_as_array(idx, invert=self.pytorch), dtype=torch.float32)
         y = torch.tensor(self.open_mask(idx, add_dims=False), dtype=torch.torch.int64)
+        # x = self.open_as_array(idx, invert=self.pytorch)
+        # y = self.open_mask(idx, add_dims=False)
+
         if self.pre_processing:
             x = self.pre_processing(x)
         # transformation
@@ -169,4 +168,65 @@ class DatasetCAMUS(Dataset):
 
 
 class DatasetTEE(Dataset):
-    pass
+    def __init__(self, gray_dir, gt_dir, pytorch=True, pre_processing=None, transform=None):
+        super().__init__()
+        
+        # Loop through the files in red folder and combine, into a dictionary, the other bands
+        self.files = [self.combine_files(f, gt_dir) for f in gray_dir.iterdir() if not f.is_dir()]
+        self.pytorch = pytorch
+        self.pre_processing = pre_processing
+        self.transform = transform
+        
+    def combine_files(self, gray_file: Path, gt_dir):
+        gt_file = gray_file.name.replace('gray', 'gt_gt')
+        gt_file = gt_file.replace('jpg', 'tif')
+        files = {'gray': gray_file, 
+                 'gt': gt_dir/gt_file}
+
+        return files
+
+
+    def __len__(self):
+        # legth of all files to be loaded
+        return len(self.files)
+
+    def open_as_array(self, idx, invert=False):
+        # open ultrasound data
+        img_open = Image.open(self.files[idx]['gray'])
+        resized_im = img_open.resize((384,384))
+        raw_us = np.stack([np.array(resized_im),], axis=2)
+        
+        if invert:
+            raw_us = raw_us.transpose((2, 0, 1))
+        raw_us = np.flip(np.flip(raw_us,axis=1), axis=2).copy()
+
+        # normalize (raw_us.dtype = uint8)
+        return (raw_us / np.iinfo(raw_us.dtype).max)
+
+    def open_mask(self, idx, add_dims=False):
+        # open mask file
+        raw_mask = np.array(Image.open(self.files[idx]['gt']).resize((384,384), resample=Image.NEAREST))
+        raw_mask = raw_mask[:, :, 0]
+        #raw = (lambda x: x==127)(raw_mask)*1
+        #raw = (lambda x: x==255)(raw)*2
+        
+        # raw_mask = np.where(raw_mask > 100, 1, 0)
+        raw_mask = np.where(raw_mask != 0, raw_mask//127, 0)
+        # raw_mask = np.where(raw_mask == 255, 2, raw_mask)
+        raw_mask = np.flip(np.flip(raw_mask, axis=0), axis=1).copy()
+
+        return np.expand_dims(raw_mask, 0) if add_dims else raw_mask
+
+    def __getitem__(self, idx):
+        # get the image and mask as arrays
+        x = torch.tensor(self.open_as_array(idx, invert=self.pytorch), dtype=torch.float32)
+        y = torch.tensor(self.open_mask(idx, add_dims=False), dtype=torch.torch.int64)
+        #print(x.size(), y.size())
+        # Gaussian Blur
+        if self.pre_processing:
+            x = self.pre_processing(x)
+        # Transformation
+        if self.transform:
+            x = self.transform(x)
+            y = self.transform(y)
+        return x, y

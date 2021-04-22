@@ -7,9 +7,11 @@ import random
 from pathlib import Path
 import torch
 import torchgeometry as tgm
+import albumentations as A
 from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
+from albumentations.pytorch import ToTensorV2
 from helpers import get_train_val_set
 from DatasetMedical import DatasetCAMUS_r, DatasetCAMUS, DatasetTEE
 from Unet2D import Unet2D
@@ -70,9 +72,9 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                 acc = acc_fn(outputs, y)
                 dice = dice_fn(outputs, y)
 
-                running_acc += acc * dataloader.batch_size
-                running_loss += loss * dataloader.batch_size
-                running_dice += dice * dataloader.batch_size
+                running_acc += acc * x.size(0) 
+                running_loss += loss * x.size(0) 
+                running_dice += dice * x.size(0) 
 
                 if step % 100 == 0:
                     # clear_output(wait=True)
@@ -82,7 +84,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
             epoch_loss = running_loss / len(dataloader.dataset)
             epoch_acc = running_acc / len(dataloader.dataset)
-            epoch_dice = running_dice /len(dataloader.dataset)
+            epoch_dice = running_dice / len(dataloader.dataset)
 
             
             print('Epoch {}/{}'.format(epoch, epochs - 1))
@@ -95,6 +97,8 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
         if epoch_loss < best_loss:
             best_loss = epoch_loss
             es_counter = 0
+            best_acc = epoch_acc
+            best_dice = epoch_dice
             best_model = model.state_dict()
             
         es_counter += 1
@@ -105,7 +109,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
         params_path.mkdir(parents=True, exist_ok=True)
         torch.save(best_model, params_path/'final.pth')
         f = open(params_path / 'config.txt', 'w')
-        f.write(f'bs: {bs},\nepochs: {epoch},\nlearn_rate: {learn_rate},\nloss: {epoch_loss},\nacc: {epoch_acc},\ndice:{epoch_dice}')
+        f.write(f'bs: {bs},\nepochs: {epoch},\nlearn_rate: {learn_rate},\nloss: {best_loss},\nacc: {best_acc},\ndice:{best_dice}')
         f.close()
 
     time_elapsed = time.time() - start
@@ -122,7 +126,7 @@ def dice_metric(predb, yb):
     return 1 - dice_loss
 
 def batch_to_img(xb, idx):
-    img = np.array(xb[idx, 0:3])
+    img = np.array(xb[idx, 0:3].cpu())
     return img.transpose((1, 2, 0))
 
 
@@ -135,8 +139,8 @@ def main(
     visual_debug=False, 
     params_path=None, 
     bs=4, 
-    epochs_val=10, 
-    learn_rate=0.01, 
+    epochs_val=10,
+    learn_rate=0.01,
     ckpt=None,
     dataset='CAMUS',
     outputs=4,
@@ -202,7 +206,7 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/gaussian_blur_ks9')
+    params_path = Path('models/base_restest')
 
     # batch size
     bs = 4
@@ -215,11 +219,10 @@ if __name__ == "__main__":
 
     # Preprocessing
     pre_process = transforms.Compose([
-        transforms.GaussianBlur(9, sigma=(0.1,1))
+        # transforms.GaussianBlur(9, sigma=(0.1,1))
     ])
-    transform = transforms.Compose([
-        # transforms.RandomVerticalFlip(p=0.3),
-        # transforms.Resize((224,224))
+    augmentation = transforms.Compose([
+        #transforms.RandomHorizontalFlip(p=0.3)
     ])
 
     #ckpt = 'models/4ch_50_epochsfinal.pth'
@@ -232,6 +235,6 @@ if __name__ == "__main__":
         dataset='CAMUS',
         outputs=4,
         pre_process=pre_process,
-        transform=transform,
+        transform=augmentation,
         ckpt=None
     )
