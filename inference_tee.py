@@ -39,7 +39,7 @@ def main(params_path):
     # split the training dataset and initialize the data loaders
     bs = 4
     # cluster_path = Path('/work/datasets/medical_project/TEE')
-    local_path = Path('data/TEE')
+    local_path = Path('data_tee/TEE')
     test_dataset = DatasetTEE(local_path / 'train_gray', local_path / 'train_gt')
     test_dl = DataLoader(test_dataset, batch_size=bs, shuffle=False)
     #xb, yb = next(iter(test_data))
