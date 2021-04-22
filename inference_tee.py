@@ -14,10 +14,12 @@ def test(model, test_dl, acc_fn, dice_fn, visual_debug):
     for x, y in test_dl:
         x = x.cuda()
         y = y.cuda()
+        print('dl',x.shape, y.shape)
         with torch.no_grad():
             outputs = model(x)
             acc = acc_fn(outputs, y)
             dice = dice_fn(outputs, y)
+        print('dl',x.shape, y.shape) 
         running_acc += acc
         running_dice += dice
     

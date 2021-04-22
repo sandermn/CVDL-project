@@ -121,7 +121,13 @@ def acc_metric(predb, yb):
     return (predb.argmax(dim=1) == yb.cuda()).float().mean()
 
 def dice_metric(predb, yb):
+    print('dice',predb.shape, yb.shape)
+    predb = predb[:,1:,:,:]
+    
+    # yb = yb[1:,:,:]
+    print('dice',predb.shape, yb.shape)    
     dice_loss = tgm.losses.dice_loss(predb, yb)
+    print('dice',predb.shape, yb.shape)  
     return 1 - dice_loss
 
 def batch_to_img(xb, idx):
