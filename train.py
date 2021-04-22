@@ -11,8 +11,7 @@ import albumentations as A
 from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
-from albumentations.pytorch import ToTensorV2
-from helpers import get_train_val_set
+from utils.helpers import get_train_val_set
 from DatasetMedical import DatasetCAMUS_r, DatasetCAMUS, DatasetTEE
 from Unet2D import Unet2D
 
@@ -87,7 +86,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             epoch_dice = running_dice / len(dataloader.dataset)
 
             
-            print('Epoch {}/{}'.format(epoch, epochs - 1))
+            print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
             print('{} Loss: {:.4f} Acc: {} Dice: {}'.format(phase, epoch_loss, epoch_acc, epoch_dice))
             print('-' * 10)
@@ -145,15 +144,20 @@ def main(
     dataset='CAMUS',
     outputs=4,
     pre_process=None,
-    transform=None
+    transform=None,
+    isotropic=False,
+    include_es=False,
+    is_local=False,
+    include_2ch=False
     ):
     # enable if you want to see some plotting
     
     # load the training data
-    train_dataset, valid_dataset = get_train_val_set(dataset, pre_process, transform)
-
+    train_dataset, valid_dataset, _ = get_train_val_set(dataset, is_local, pre_process, transform, isotropic, include_es, include_2ch)
     train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_dl = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
+    
+    print(f'Size of train dataset: {len(train_dataset)}\nSize of validation dataset: {len(valid_dataset)}')
 
     if visual_debug:
         fig, ax = plt.subplots(1, 2)
@@ -208,14 +212,17 @@ if __name__ == "__main__":
     # Use models/custom
     params_path = Path('models/base_restest')
 
-    # batch size
+    # parameters
     bs = 4
-
-    # epochs
-    epochs_val = 50
-
-    # learning rate
+    epochs_val = 1
     learn_rate = 0.01
+    dataset = 'CAMUS'
+    outputs = 4
+    ckpt = None
+    isotropic = True
+    include_es = False
+    is_local = False
+    include_2ch = False
 
     # Preprocessing
     pre_process = transforms.Compose([
@@ -232,9 +239,13 @@ if __name__ == "__main__":
         params_path=params_path,
         epochs_val=epochs_val,
         learn_rate=learn_rate,
-        dataset='CAMUS',
-        outputs=4,
+        dataset=dataset,
+        outputs=outputs,
         pre_process=pre_process,
-        transform=augmentation,
-        ckpt=None
+        transform=transform,
+        ckpt=ckpt,
+        isotropic=isotropic,
+        include_es=include_es,
+        is_local=is_local,
+        include_2ch=include_2ch
     )
