@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import time
 import torch
+import torchgeometry as tgm
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torch import nn
@@ -8,7 +9,7 @@ from torchvision import transforms
 from utils.helpers import get_train_val_set, predb_to_mask, batch_to_img
 from Unet2D import Unet2D
 from utils.metrics import acc_metric, dice_metric
-
+from monai.losses import DiceLoss
 
 def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params_path, epochs=1):
     start = time.time()
@@ -66,7 +67,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
                 # stats 
                 acc = acc_fn(outputs, y)
-                #dice = dice_fn(outputs, y)
+                dice = dice_fn(outputs, y)
 
                 running_acc += acc * x.size(0) 
                 running_loss += loss * x.size(0) 
@@ -93,7 +94,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             best_loss = epoch_loss
             es_counter = 0
             best_acc = epoch_acc
-            # best_dice = epoch_dice
+            #best_dice = epoch_dice
             best_model = model.state_dict()
 
         es_counter += 1
@@ -111,6 +112,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
     return train_loss, valid_loss
+
 def main(
     visual_debug=False, 
     params_path=None, 
@@ -153,7 +155,8 @@ def main(
     if ckpt:
         unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
-    loss_fn = nn.CrossEntropyLoss()
+    # loss_fn = nn.CrossEntropyLoss()
+    loss_fn = DiceLoss(include_background=False, to_onehot_y=True, softmax=True, batch=True)
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
 
     # do some training
