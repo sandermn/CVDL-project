@@ -122,8 +122,8 @@ class DatasetCAMUS(Dataset):
         Gray and gt points to the metaheader file for each photo.
         This file contains information about the file that can be useful
         """
-        files = {'gray': medim(patient_dir / f"{str(patient_dir)[-11:]}_4CH_{value}.mhd"),
-                 'gt': medim(patient_dir / f"{str(patient_dir)[-11:]}_4CH_{value}_gt.mhd")}
+        files = {'gray': medim(patient_dir / f"{str(patient_dir)[-11:]}_{channels}_{value}.mhd"),
+                 'gt': medim(patient_dir / f"{str(patient_dir)[-11:]}_{channels}_{value}_gt.mhd")}
 
         return files
 

@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
     # parameters
     bs = 4
-    epochs_val = 2
+    epochs_val = 10
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4
