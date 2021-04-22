@@ -116,6 +116,7 @@ class DatasetCAMUS(Dataset):
         self.pytorch = pytorch
         self.pre_processing = pre_processing
         self.transform = transform
+        self.isotropic = isotropic
 
     def combine_files(self, patient_dir: Path, channels: str, value: str):
         """
@@ -136,6 +137,10 @@ class DatasetCAMUS(Dataset):
         im = self.files[idx]['gray']
         arr = np.array(im.imdata)
         pil_im = ToPILImage()(arr)
+        
+        # create isotropic pixel size
+        pil_im = self.create_isotropy(pil_im) if self.isotropic else pil_im
+        
         pil_im = self.resize_image(pil_im)
 
         raw_us = np.stack([np.array(pil_im), ], axis=2)
@@ -153,22 +158,38 @@ class DatasetCAMUS(Dataset):
         # create array of mask and resize
         arr = np.array(im.imdata)
         pil_im = ToPILImage()(arr)
+        
+        # create isotropic pixel size
+        pil_im = self.create_isotropy(pil_im) if self.isotropic else pil_im
+        
         pil_im = self.resize_image(pil_im)
         raw_mask = np.array(pil_im)  # a numpy array with unique values [0,1,2,3]
 
-        # raw_mask is (384,384) array, create array with 3 channels (384,384, 3)
-
-        """
-        mask = np.zeros(np.concatenate((3, np.shape(raw_mask)),axis=None))
-        mask[0,:,:] = mask[0,:,:] + np.where(raw_mask==1, 1, 0)
-        mask[1,:,:] = mask[1,:,:] + np.where(raw_mask==2, 1, 0)
-        mask[2,:,:] = mask[2,:,:] + np.where(raw_mask==3, 1, 0)
-        """
-
         return raw_mask
+    
+    def create_isotropy(self, pil_im):
+        """ 
+            larges image is (1945,1181) which converted isotropic is (1945,590)
+            thus, new image size is 2048, 1024
+            resize this to a manageble size in Preprocessing
+        """
+        # resize to make isotropic
+        pil_isotropic = pil_im.resize((pil_im.size[0], pil_im.size[1]//2))
+        
+        #create padding
+        pil_im = Image.new(pil_im.mode, (2048, 1024), 0)
+        
+        # find ratio to resize 
+        ratio = 2048/pil_isotropic.size[0] if 2048/pil_isotropic.size[0] < 1024/pil_isotropic.size[1] else 1024/pil_isotropic.size[1]
+        
+        #resize to fit within padding
+        pil_isotropic = pil_isotropic.resize((int(pil_isotropic.size[0]*ratio), int(pil_isotropic.size[1]*ratio)))
+        
+        pil_im.paste(pil_isotropic)
+        return pil_im
 
     def resize_image(self, image):
-        return image.resize((384, 384))
+        return image.resize((256, 128))
 
     def __getitem__(self, idx):
         # get the image and mask as arrays
