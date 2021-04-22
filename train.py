@@ -121,13 +121,8 @@ def acc_metric(predb, yb):
     return (predb.argmax(dim=1) == yb.cuda()).float().mean()
 
 def dice_metric(predb, yb):
-    print('dice',predb.shape, yb.shape)
-    predb = predb[:,1:,:,:]
-    
-    # yb = yb[1:,:,:]
-    print('dice',predb.shape, yb.shape)    
-    dice_loss = tgm.losses.dice_loss(predb, yb)
-    print('dice',predb.shape, yb.shape)  
+    predb = predb[:,1:,:,:]  
+    dice_loss = tgm.losses.dice_loss(predb, yb)  
     return 1 - dice_loss
 
 def batch_to_img(xb, idx):
@@ -217,20 +212,20 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/base_restest')
+    params_path = Path('models/base_2ch')
 
     # parameters
     bs = 4
-    epochs_val = 1
+    epochs_val = 50
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4
     ckpt = None
     isotropic = False
     include_es = False
-    is_local = False
-    include_2ch = True
-    include_4ch = False
+    is_local = True
+    include_2ch = False
+    include_4ch = True
 
     # Preprocessing
     pre_process = transforms.Compose([

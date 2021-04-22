@@ -24,7 +24,7 @@ def get_train_val_set(dataset, is_local, pre_process, transform, isotropic, incl
         valid_dataset = DatasetCAMUS_r(base_path / 'train_gray', val_files,
                                         base_path / 'train_gt', pre_processing=pre_process, transform=transform)
     elif dataset == 'CAMUS':
-        base_path = Path('/data') if is_local else base_path
+        base_path = Path('data') if is_local else base_path
         train_dataset = DatasetCAMUS(
             base_path,
             pre_processing=pre_process,
@@ -32,10 +32,12 @@ def get_train_val_set(dataset, is_local, pre_process, transform, isotropic, incl
             isotropic=isotropic,
             include_es=include_es,
             include_2ch=include_2ch,
+            include_4ch=include_4ch,
             start=1,
             stop=300)
         valid_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, include_4ch=include_4ch, start=301, stop=400)
         test_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, include_4ch=include_4ch, start=401, stop=450)
+        print(len(train_dataset), len(valid_dataset), len(test_dataset))
     elif dataset == 'TEE':
         train_files, val_files, _ = get_random_folder_split(base_path)
         train_dataset = DatasetTEE(base_path / 'train_gray', train_files,

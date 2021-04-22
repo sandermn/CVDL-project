@@ -81,9 +81,8 @@ class DatasetCAMUS(Dataset):
         super().__init__()
 
         # Loop through the files in red folder and combine, into a dictionary, the other bands
-        print(str(base_path))
         self.files = []
-
+        print(include_4ch)
         if include_4ch:
             ed_files = [
                 self.combine_files(patient_dir, '4CH', 'ED')
@@ -98,7 +97,7 @@ class DatasetCAMUS(Dataset):
                 for patient_dir in base_path.iterdir() 
                 if int(str(patient_dir)[-3:]) >= start 
                 and int(str(patient_dir)[-3:]) <=stop]
-            self.files.extend(es_files)
+                self.files.extend(es_files)
 
            
         if include_2ch:
@@ -106,7 +105,7 @@ class DatasetCAMUS(Dataset):
                 self.combine_files(patient_dir, '2CH', 'ED') 
                 for patient_dir in base_path.iterdir() 
                 if int(str(patient_dir)[-3:]) >= start 
-                and int(str(patient_dir)[-3:]) <=stop]
+                and int(str(patient_dir)[-3:]) <= stop]
             self.files.extend(ed_2ch) 
             if include_es:
                 es_2ch = [
@@ -194,7 +193,7 @@ class DatasetCAMUS(Dataset):
         return pil_im
 
     def resize_image(self, image):
-        return image.resize((256, 128))
+        return image.resize((384, 384))
 
     def __getitem__(self, idx):
         # get the image and mask as arrays
