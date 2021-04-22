@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader, sampler
 from torchvision import transforms
-from PIL import Image
+from PIL import Image, ImageFilter, ImageEnhance
 from torchvision.transforms import ToPILImage
 from medimage import image as medim
 
@@ -142,7 +142,11 @@ class DatasetCAMUS(Dataset):
         pil_im = self.create_isotropy(pil_im) if self.isotropic else pil_im
         
         pil_im = self.resize_image(pil_im)
-
+        
+        # preprocessing
+        #pil_im = pil_im.filter(ImageFilter.GaussianBlur(radius=5))
+        #pil_im = ImageEnhance.Sharpness(pil_im).enhance(2) # surprise us with an idea you have
+        
         raw_us = np.stack([np.array(pil_im), ], axis=2)
 
         if invert:

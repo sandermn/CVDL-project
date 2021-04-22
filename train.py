@@ -143,9 +143,9 @@ def main(
     pre_process=None,
     transform=None,
     isotropic=False,
-    include_es=True,
+    include_es=False,
     is_local=False,
-    include_2ch=True
+    include_2ch=False
     ):
     # enable if you want to see some plotting
     
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/gaussian_blur_ks9')
+    params_path = Path('models/pre_shar')
 
     # parameters
     bs = 4
@@ -216,10 +216,10 @@ if __name__ == "__main__":
     dataset = 'CAMUS'
     outputs = 4
     ckpt = None
-    isotropic = False
-    include_es = True
+    isotropic = True
+    include_es = False
     is_local = False
-    include_2ch = True
+    include_2ch = False
 
     # Preprocessing
     pre_process = transforms.Compose([
