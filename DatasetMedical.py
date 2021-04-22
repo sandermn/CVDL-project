@@ -82,7 +82,6 @@ class DatasetCAMUS(Dataset):
 
         # Loop through the files in red folder and combine, into a dictionary, the other bands
         self.files = []
-        print(include_4ch)
         if include_4ch:
             ed_files = [
                 self.combine_files(patient_dir, '4CH', 'ED')

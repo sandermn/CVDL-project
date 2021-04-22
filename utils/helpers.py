@@ -3,6 +3,14 @@ import random
 from DatasetMedical import DatasetCAMUS, DatasetCAMUS_r, DatasetTEE
 from pathlib import Path
 
+def batch_to_img(xb, idx):
+    img = np.array(xb[idx, 0:3].cpu())
+    return img.transpose((1, 2, 0))
+
+def predb_to_mask(predb, idx):
+    p = torch.functional.F.softmax(predb[idx], 0)
+    return p.argmax(0).cpu()
+
 def get_random_folder_split(path):
     x_path = path / 'train_gray'
     gray_files = os.listdir(x_path)

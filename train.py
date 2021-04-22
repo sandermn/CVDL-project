@@ -11,9 +11,10 @@ import albumentations as A
 from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
-from utils.helpers import get_train_val_set
+from utils.helpers import get_train_val_set, predb_to_mask, batch_to_img
 from DatasetMedical import DatasetCAMUS_r, DatasetCAMUS, DatasetTEE
 from Unet2D import Unet2D
+from utils.metrics import acc_metric, dice_metric
 
 
 def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params_path, epochs=1):
@@ -54,10 +55,12 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                     # zero the gradients
                     optimizer.zero_grad()
                     outputs = model(x)
+                    print(outputs.shape, y.shape)
                     loss = loss_fn(outputs, y)
-            
+                    print(loss)
                     # the backward pass frees the graph memory, so there is no 
                     # need for torch.no_grad in this training pass
+                    #print(y.max())
                     loss.backward()
                     optimizer.step()
                     # scheduler.step()
@@ -67,13 +70,13 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                         outputs = model(x)
                         loss = loss_fn(outputs, y.long())
 
-                # stats - whatever is the phase
+                # stats 
                 acc = acc_fn(outputs, y)
-                dice = dice_fn(outputs, y)
+                #dice = dice_fn(outputs, y)
 
                 running_acc += acc * x.size(0) 
                 running_loss += loss * x.size(0) 
-                running_dice += dice * x.size(0) 
+                #running_dice += dice * x.size(0) 
 
                 if step % 100 == 0:
                     # clear_output(wait=True)
@@ -83,7 +86,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
             epoch_loss = running_loss / len(dataloader.dataset)
             epoch_acc = running_acc / len(dataloader.dataset)
-            epoch_dice = running_dice / len(dataloader.dataset)
+            #epoch_dice = running_dice / len(dataloader.dataset)
 
             
             print('Epoch {}/{}'.format(epoch+1, epochs))
@@ -97,7 +100,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             best_loss = epoch_loss
             es_counter = 0
             best_acc = epoch_acc
-            best_dice = epoch_dice
+            #best_dice = epoch_dice
             best_model = model.state_dict()
             
         es_counter += 1
@@ -115,25 +118,6 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
     return train_loss, valid_loss
-
-
-def acc_metric(predb, yb):
-    return (predb.argmax(dim=1) == yb.cuda()).float().mean()
-
-def dice_metric(predb, yb):
-    predb = predb[:,1:,:,:]  
-    dice_loss = tgm.losses.dice_loss(predb, yb)  
-    return 1 - dice_loss
-
-def batch_to_img(xb, idx):
-    img = np.array(xb[idx, 0:3].cpu())
-    return img.transpose((1, 2, 0))
-
-
-def predb_to_mask(predb, idx):
-    p = torch.functional.F.softmax(predb[idx], 0)
-    return p.argmax(0).cpu()
-
 
 def main(
     visual_debug=False, 
@@ -208,14 +192,14 @@ def main(
 
 if __name__ == "__main__":
     # Visual Debug
-    visual_debug = True
+    visual_debug = False
     
     # Model Save Path
     # Use models/custom
     params_path = Path('models/base_2ch')
 
     # parameters
-    bs = 4
+    bs = 6
     epochs_val = 50
     learn_rate = 0.01
     dataset = 'CAMUS'
