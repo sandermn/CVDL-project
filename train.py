@@ -10,7 +10,7 @@ import torchgeometry as tgm
 from torch.utils.data import Dataset, DataLoader, sampler
 from torch import nn
 from torchvision import transforms
-from helpers import get_train_val_set
+from utils.helpers import get_train_val_set
 from DatasetMedical import DatasetCAMUS_r, DatasetCAMUS, DatasetTEE
 from Unet2D import Unet2D
 
