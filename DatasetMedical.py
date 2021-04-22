@@ -77,40 +77,44 @@ class DatasetCAMUS(Dataset):
     - Only use 4CH ED and ES, NOT sequence which is the full sequence of heart contraction
     """
 
-    def __init__(self, base_path, pytorch=True, pre_processing=None, transform=None, isotropic=False, include_es=True, include_2ch=True, start=1, stop=300):
+    def __init__(self, base_path, pytorch=True, pre_processing=None, transform=None, isotropic=False, include_es=True, include_2ch=True, include_4ch=True, start=1, stop=300):
         super().__init__()
 
         # Loop through the files in red folder and combine, into a dictionary, the other bands
         print(str(base_path))
-        self.files = [
-            self.combine_files(patient_dir, '4CH', 'ED')
-            for patient_dir in base_path.iterdir() 
-            if int(str(patient_dir)[-3:]) >= start 
-            and int(str(patient_dir)[-3:]) <=stop
-            ]
-        
-        if include_es:
-            es_files = [
+        self.files = []
+
+        if include_4ch:
+            ed_files = [
+                self.combine_files(patient_dir, '4CH', 'ED')
+                for patient_dir in base_path.iterdir() 
+                if int(str(patient_dir)[-3:]) >= start 
+                and int(str(patient_dir)[-3:]) <=stop
+                ]
+            self.files.extend(ed_files)
+            if include_es:
+                es_files = [
                 self.combine_files(patient_dir, '4CH', 'ES') 
                 for patient_dir in base_path.iterdir() 
                 if int(str(patient_dir)[-3:]) >= start 
                 and int(str(patient_dir)[-3:]) <=stop]
             self.files.extend(es_files)
+
            
         if include_2ch:
-            es_2ch = [
-                self.combine_files(patient_dir, '2CH', 'ES') 
-                for patient_dir in base_path.iterdir() 
-                if int(str(patient_dir)[-3:]) >= start 
-                and int(str(patient_dir)[-3:]) <=stop]
-            self.files.extend(es_2ch)
-            
             ed_2ch = [
                 self.combine_files(patient_dir, '2CH', 'ED') 
                 for patient_dir in base_path.iterdir() 
                 if int(str(patient_dir)[-3:]) >= start 
                 and int(str(patient_dir)[-3:]) <=stop]
             self.files.extend(ed_2ch) 
+            if include_es:
+                es_2ch = [
+                    self.combine_files(patient_dir, '2CH', 'ES') 
+                    for patient_dir in base_path.iterdir() 
+                    if int(str(patient_dir)[-3:]) >= start 
+                    and int(str(patient_dir)[-3:]) <=stop]
+                self.files.extend(es_2ch)    
 
         self.pytorch = pytorch
         self.pre_processing = pre_processing

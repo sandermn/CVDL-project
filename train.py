@@ -154,12 +154,13 @@ def main(
     isotropic=False,
     include_es=False,
     is_local=False,
-    include_2ch=False
+    include_2ch=False,
+    include_4ch=False
     ):
     # enable if you want to see some plotting
     
     # load the training data
-    train_dataset, valid_dataset, _ = get_train_val_set(dataset, is_local, pre_process, transform, isotropic, include_es, include_2ch)
+    train_dataset, valid_dataset, _ = get_train_val_set(dataset, is_local, pre_process, transform, isotropic, include_es, include_2ch, include_4ch)
     train_dl = DataLoader(train_dataset, batch_size=bs, shuffle=True)
     valid_dl = DataLoader(valid_dataset, batch_size=bs, shuffle=False)
     
@@ -229,6 +230,7 @@ if __name__ == "__main__":
     include_es = False
     is_local = False
     include_2ch = True
+    include_4ch = False
 
     # Preprocessing
     pre_process = transforms.Compose([
@@ -248,10 +250,11 @@ if __name__ == "__main__":
         dataset=dataset,
         outputs=outputs,
         pre_process=pre_process,
-        transform=transform,
+        transform=augmentation,
         ckpt=ckpt,
         isotropic=isotropic,
         include_es=include_es,
         is_local=is_local,
-        include_2ch=include_2ch
+        include_2ch=include_2ch,
+        include_4ch=include_4ch
     )

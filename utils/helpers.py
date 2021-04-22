@@ -14,7 +14,7 @@ def get_random_folder_split(path):
     test_files = [gray_files[i] for i in indices[int(np.floor(0.85*no_files)):]]
     return train_files, val_files, test_files
 
-def get_train_val_set(dataset, is_local, pre_process, transform, isotropic, include_es, include_2ch):
+def get_train_val_set(dataset, is_local, pre_process, transform, isotropic, include_es, include_2ch, include_4ch):
     base_path = Path('/work/datasets/medical_project')/dataset
     
     if dataset == 'CAMUS_resized': 
@@ -34,8 +34,8 @@ def get_train_val_set(dataset, is_local, pre_process, transform, isotropic, incl
             include_2ch=include_2ch,
             start=1,
             stop=300)
-        valid_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, start=301, stop=400)
-        test_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, start=401, stop=450)
+        valid_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, include_4ch=include_4ch, start=301, stop=400)
+        test_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, include_4ch=include_4ch, start=401, stop=450)
     elif dataset == 'TEE':
         train_files, val_files, _ = get_random_folder_split(base_path)
         train_dataset = DatasetTEE(base_path / 'train_gray', train_files,
