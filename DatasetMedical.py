@@ -165,8 +165,14 @@ class DatasetCAMUS(Dataset):
         
         pil_im = self.resize_image(pil_im)
         raw_mask = np.array(pil_im)  # a numpy array with unique values [0,1,2,3]
+        
+        r2 = np.zeros((len(np.unique(raw_mask)), raw_mask.shape[0], raw_mask.shape[1])) 
+        print('rm',raw_mask.shape, np.unique(raw_mask))
+        for i in np.unique(raw_mask):
+            r2[i] = np.where(raw_mask==i, i, raw_mask) 
+        print('r2',r2.shape, np.unique(r2))
 
-        return raw_mask
+        return r2
     
     def create_isotropy(self, pil_im):
         """ 

@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import time
 import torch
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torch import nn
@@ -8,6 +10,8 @@ from torchvision import transforms
 from utils.helpers import get_train_val_set, predb_to_mask, batch_to_img
 from Unet2D import Unet2D
 from utils.metrics import acc_metric, dice_metric
+from monai.metrics import DiceMetric
+from monai.losses import DiceLoss
 
 
 def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params_path, epochs=1):
@@ -48,7 +52,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                     # zero the gradients
                     optimizer.zero_grad()
                     outputs = model(x)
-                    print(outputs.shape, y.shape)
+                    print('a', outputs.shape, y.shape)
                     loss = loss_fn(outputs, y)
 
                     print(loss)
@@ -66,11 +70,12 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
                 # stats 
                 acc = acc_fn(outputs, y)
-                #dice = dice_fn(outputs, y)
+                print('b', outputs.shape, y.shape)
+                dice = dice_fn(outputs, y)
 
                 running_acc += acc * x.size(0) 
                 running_loss += loss * x.size(0) 
-                #running_dice += dice * x.size(0)
+                running_dice += dice * x.size(0)
 
                 if step % 100 == 0:
                     # clear_output(wait=True)
@@ -80,7 +85,8 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
             epoch_loss = running_loss / len(dataloader.dataset)
             epoch_acc = running_acc / len(dataloader.dataset)
-            #epoch_dice = running_dice / len(dataloader.dataset)
+            epoch_dice = running_dice / len(dataloader.dataset)
+            epoch_dice = 1
             
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
@@ -146,18 +152,21 @@ def main(
         plt.show()
 
     xb, yb = next(iter(train_dl))
-    print(xb.shape, yb.shape)
+    print('c', xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and 2 channels as output
     unet = Unet2D(1, outputs)
+    
     if ckpt:
         unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
-
+    
+    dice_met = DiceMetric(include_background=False)
+    # else import dice_metric
     # do some training
-    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_metric, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_met, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -189,7 +198,7 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/base_2ch')
+    params_path = Path('models/test_4ch')
 
     # parameters
     bs = 6
@@ -200,7 +209,7 @@ if __name__ == "__main__":
     ckpt = None
     isotropic = False
     include_es = False
-    is_local = True
+    is_local = False
     include_2ch = False
     include_4ch = True
 
