@@ -39,7 +39,7 @@ def calc_dice_coef(pred, y):
     pred = pred.argmax(dim=0)
     dice = []
     smooth = 1e-6
-    for pc in p_classes:
+    for pc in p_classes[1:]:
         y_match = torch.where(y == pc, 1, 0).detach().cpu().numpy()
         p_match = torch.where(pred == pc, 1, 0).detach().cpu().numpy()
         TP = np.sum(a=np.multiply(y_match, p_match), axis=None, dtype=y_match.dtype)

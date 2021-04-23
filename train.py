@@ -55,7 +55,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                     #print('a', outputs.shape, y.shape)
                     loss = loss_fn(outputs, y)
 
-                    print(loss)
+                    # print(loss)
                     # the backward pass frees the graph memory, so there is no
                     # need for torch.no_grad in this training pass
                     #print(y.max())
@@ -72,7 +72,6 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                 acc = acc_fn(outputs, y)
                 #print('b', outputs.shape, y.shape)
                 dice = dice_fn(outputs, y)
-                print(f'Dice sore: {dice}')
 
                 running_acc += acc * x.size(0) 
                 running_loss += loss * x.size(0) 
@@ -206,14 +205,14 @@ if __name__ == "__main__":
 
     # parameters
     bs = 6
-    epochs_val = 2
+    epochs_val = 20
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4
     ckpt = None
     isotropic = False
     include_es = False
-    is_local = False
+    is_local = True
     include_2ch = False
     include_4ch = True
 
