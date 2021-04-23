@@ -18,9 +18,7 @@ def dice_loss(predb, yb):
 """
 
 
-
 def dice_function(predb, yb):
-    #print(f'dice_function: {predb.shape}{yb.shape}')
     scores = []
     for pred, y in zip(predb, yb):
         score = calc_dice_coef(pred, y)
@@ -47,7 +45,5 @@ def calc_dice_coef(pred, y):
         
     return np.mean(dice)
                     
-
 def dice_loss(predb, yb):
     return 1 - dice_function(predb, yb)
-

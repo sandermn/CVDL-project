@@ -201,11 +201,11 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/test_4ch')
+    params_path = Path('models/baseline')
 
     # parameters
     bs = 6
-    epochs_val = 20
+    epochs_val = 50
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4
@@ -213,8 +213,8 @@ if __name__ == "__main__":
     isotropic = False
     include_es = False
     is_local = True
-    include_2ch = False
-    include_4ch = True
+    include_2ch = True
+    include_4ch = False
 
     # Preprocessing
     pre_process = transforms.Compose([
