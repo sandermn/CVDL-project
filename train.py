@@ -169,7 +169,7 @@ def main(
     #dice_met = DiceMetric(include_background=False)
     # else import dice_metric
     # do some training
-    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_function, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, dice_loss, opt, acc_metric, dice_function, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -201,18 +201,18 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/test_4ch')
+    params_path = Path('models/test_dice_loss')
 
     # parameters
     bs = 6
-    epochs_val = 20
+    epochs_val = 4
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4
     ckpt = None
     isotropic = False
     include_es = False
-    is_local = True
+    is_local = False
     include_2ch = False
     include_4ch = True
 
