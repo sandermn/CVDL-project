@@ -54,6 +54,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                     outputs = model(x)
                     #print('a', outputs.shape, y.shape)
                     loss = loss_fn(outputs, y)
+                    print(loss.requires_grad)
 
                     # print(loss)
                     # the backward pass frees the graph memory, so there is no
@@ -161,15 +162,12 @@ def main(
         unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
-    #loss_fn = DiceLoss(include_background=True)
-    #dice_metric = DiceMetric(include_background=False)
-    
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
     
     #dice_met = DiceMetric(include_background=False)
     # else import dice_metric
     # do some training
-    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_function, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, dice_loss, opt, acc_metric, dice_function, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -201,7 +199,7 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/baseline')
+    params_path = Path('models/dice_loss')
 
     # parameters
     bs = 6
