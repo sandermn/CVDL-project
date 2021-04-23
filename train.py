@@ -7,9 +7,9 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 from torch import nn
 from torchvision import transforms
-from utils.helpers import get_train_val_set, predb_to_mask, batch_to_img
+from utils.helpers import get_train_val_set, predb_to_mask, batch_to_img, make_3d
 from Unet2D import Unet2D
-from utils.metrics import acc_metric, dice_metric
+from utils.metrics import acc_metric, dice_function, dice_loss
 from monai.metrics import DiceMetric
 from monai.losses import DiceLoss
 
@@ -52,7 +52,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                     # zero the gradients
                     optimizer.zero_grad()
                     outputs = model(x)
-                    print('a', outputs.shape, y.shape)
+                    #print('a', outputs.shape, y.shape)
                     loss = loss_fn(outputs, y)
 
                     print(loss)
@@ -70,8 +70,9 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
                 # stats 
                 acc = acc_fn(outputs, y)
-                print('b', outputs.shape, y.shape)
+                #print('b', outputs.shape, y.shape)
                 dice = dice_fn(outputs, y)
+                print(f'Dice sore: {dice}')
 
                 running_acc += acc * x.size(0) 
                 running_loss += loss * x.size(0) 
@@ -86,7 +87,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             epoch_loss = running_loss / len(dataloader.dataset)
             epoch_acc = running_acc / len(dataloader.dataset)
             epoch_dice = running_dice / len(dataloader.dataset)
-            epoch_dice = 1
+            #epoch_dice = 1
             
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
@@ -152,7 +153,7 @@ def main(
         plt.show()
 
     xb, yb = next(iter(train_dl))
-    print('c', xb.shape, yb.shape)
+    #print('c', xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and 2 channels as output
     unet = Unet2D(1, outputs)
@@ -161,12 +162,15 @@ def main(
         unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
+    #loss_fn = DiceLoss(include_background=True)
+    #dice_metric = DiceMetric(include_background=False)
+    
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
     
-    dice_met = DiceMetric(include_background=False)
+    #dice_met = DiceMetric(include_background=False)
     # else import dice_metric
     # do some training
-    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_met, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_function, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -202,7 +206,7 @@ if __name__ == "__main__":
 
     # parameters
     bs = 6
-    epochs_val = 50
+    epochs_val = 2
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4

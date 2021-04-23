@@ -13,6 +13,17 @@ def predb_to_mask(predb, idx):
     p = torch.functional.F.softmax(predb[idx], 0)
     return p.argmax(0).cpu()
 
+def make_3d(target):
+    
+    r2 = torch.zeros((target.shape[0], len(torch.unique(target)), target.shape[1], target.shape[2])) 
+    print(r2.shape)
+    #print('rm',raw_mask.shape, np.unique(raw_mask))
+    for i in torch.unique(target):
+        r2[0][i] = torch.where(target[0]==i, i, target[0]) 
+    #print('r2',r2.shape, np.unique(r2))
+    return r2
+
+
 def get_random_folder_split(path):
     x_path = path / 'train_gray'
     gray_files = os.listdir(x_path)
