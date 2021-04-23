@@ -53,7 +53,7 @@ def calc_jdl(pred, y):
         jac = (2*TP+smooth)/(np.sum(y_match)+np.sum(p_match)+TP+smooth)
         jdls.append((1-jac)*smooth)
 
-    return jdls
+    return np.mean(jdls)
 
 
 
