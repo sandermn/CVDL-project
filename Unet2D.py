@@ -1,12 +1,6 @@
 import torch
 from torch import nn
 
-
-
-
-
-
-
 class Unet2D(nn.Module):
 
     #added one deeper lvl of conv layers
@@ -22,10 +16,10 @@ class Unet2D(nn.Module):
         self.conv5 = self.contract_block(filter[3], filter[4], 3, 1)
 
         self.upconv5 = self.expand_block(filter[4], filter[3], 3, 1)
-        self.upconv4 = self.expand_block(filter[3], filter[2], 3, 1)
-        self.upconv3 = self.expand_block(filter[2], filter[1], 3, 1)
-        self.upconv2 = self.expand_block(filter[1], filter[0], 3, 1)
-        self.upconv1 = self.expand_block(filter[0], out_channels, 3, 1)
+        self.upconv4 = self.expand_block(filter[3]*2, filter[2], 3, 1)
+        self.upconv3 = self.expand_block(filter[2]*2, filter[1], 3, 1)
+        self.upconv2 = self.expand_block(filter[1]*2, filter[0], 3, 1)
+        self.upconv1 = self.expand_block(filter[0]*2, out_channels, 3, 1)
 
     def __call__(self, x):
         # downsampling part
@@ -37,9 +31,9 @@ class Unet2D(nn.Module):
         conv5 = self.conv5(conv4)
 
         #upsample
-        upconv5 = self.upconv5(conv4)
-        upconv4 = self.upconv4(torch.cat([upconv5, conv4]), 1)
-        upconv3 = self.upconv3(torch.cat([upconv4, conv3]), 1)
+        upconv5 = self.upconv5(conv5)
+        upconv4 = self.upconv4(torch.cat([upconv5, conv4], 1))
+        upconv3 = self.upconv3(torch.cat([upconv4, conv3], 1))
         upconv2 = self.upconv2(torch.cat([upconv3, conv2], 1))
         upconv1 = self.upconv1(torch.cat([upconv2, conv1], 1))
 

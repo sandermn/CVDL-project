@@ -197,7 +197,7 @@ def main(
 
 if __name__ == "__main__":
     # Visual Debug
-    visual_debug = False
+    visual_debug = True
     
     # Model Save Path
     # Use models/custom
@@ -205,14 +205,14 @@ if __name__ == "__main__":
 
     # parameters
     bs = 6
-    epochs_val = 20
+    epochs_val = 10
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4
     ckpt = None
     isotropic = False
     include_es = False
-    is_local = True
+    is_local = False
     include_2ch = False
     include_4ch = True
 
