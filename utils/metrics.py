@@ -2,10 +2,10 @@ import torchgeometry as tgm
 import torch
 import numpy as np
 import torch.nn.functional as F
+from torch import nn
 
 def acc_metric(predb, yb):
     return (predb.argmax(dim=1) == yb.cuda()).float().mean()
-
 
 def dice_function(predb, yb):
     scores = []
@@ -23,7 +23,6 @@ def calc_dice_coef(pred, y):
     p_classes = list(range(pred.shape[0]))
     #print(f'y_classes: {y_classes}, p_classes: {p_classes}')
     #assert y_classes == p_classes , "pred and y should have the same channels"
-    #print('cdc1', pred.requires_grad)
     pred = pred.argmax(dim=0)
     dice = []
     smooth = 1e-6
@@ -55,7 +54,7 @@ def jaccard_distance_loss(predb, yb):
 def calc_jdl(pred, y):
     y_classes = list(torch.unique(y))
     p_classes = list(range(pred.shape[0]))
-    pred = pred.argmax(dim=0)
+    pred = F.softmax(pred, dim=0)
     jdls = []
     smooth = 1e-6
     for pc in p_classes[1:]:
@@ -69,3 +68,32 @@ def calc_jdl(pred, y):
     jdls.requires_grad_(True)
 
     return jdls
+
+class DiceLoss(nn.Module):
+    def __init__(self, reduction='mean', eps=1e-7):
+        super().__init__()
+        self.eps, self.reduction = eps, reduction
+        
+    def forward(self, output, targ):
+        """
+        output is NCHW, targ is NHW
+        """
+        eps = 1e-7
+        # convert target to onehot # eye(4)[32,384,384] 
+        targ_onehot = torch.eye(output.shape[1])[targ].permute(0,3,1,2).float().cuda()
+        # convert logits to probs
+        pred = self.activation(output)
+        # sum over HW
+        inter = (pred * targ_onehot).sum(axis=[-1, -2])
+        union = (pred + targ_onehot).sum(axis=[-1, -2])
+        # mean over C
+        loss = 1. - (2. * inter / (union + self.eps)).mean(axis=-1)
+        if self.reduction == 'none':
+            return loss
+        elif self.reduction == 'sum':
+            return loss.sum()
+        elif self.reduction == 'mean':
+            return loss.mean()
+
+    def activation(self, output):
+        return F.softmax(output, dim=1)

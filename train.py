@@ -2,16 +2,14 @@ import matplotlib.pyplot as plt
 import time
 import torch
 import os
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torch import nn
 from torchvision import transforms
 from utils.helpers import get_train_val_set, predb_to_mask, batch_to_img, make_3d
 from Unet2D import Unet2D
-from utils.metrics import acc_metric, dice_function, dice_loss, jaccard_distance_loss
-from monai.metrics import DiceMetric
-from monai.losses import DiceLoss
+from utils.metrics import acc_metric, dice_function, dice_loss, jaccard_distance_loss, DiceLoss
+
 
 
 def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params_path, epochs=1):
@@ -88,7 +86,6 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             epoch_acc = running_acc / len(dataloader.dataset)
             epoch_dice = running_dice / len(dataloader.dataset)
             #epoch_dice = 1
-            print(epoch_loss, epoch_loss.item())
             
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
@@ -163,12 +160,13 @@ def main(
         unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
+    loss_fn = DiceLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
     
     #dice_met = DiceMetric(include_background=False)
     # else import dice_metric
     # do some training
-    train_loss, valid_loss = train(unet, train_dl, valid_dl, jaccard_distance_loss, opt, acc_metric, dice_function, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_function, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -196,22 +194,22 @@ def main(
 
 if __name__ == "__main__":
     # Visual Debug
-    visual_debug = False
+    visual_debug = True
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/dice_loss')
+    params_path = Path('models/dice_loss_bs4')
 
     # parameters
-    bs = 6
-    epochs_val = 2
+    bs = 16
+    epochs_val = 50
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4
     ckpt = None
     isotropic = False
     include_es = False
-    is_local = False
+    is_local = True
     include_2ch = True
     include_4ch = False
 

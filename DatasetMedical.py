@@ -242,28 +242,30 @@ class DatasetTEE(Dataset):
 
     def open_as_array(self, idx, invert=False):
         # open ultrasound data
-        img_open = Image.open(self.files[idx]['gray'])
-        resized_im = img_open.resize((384,384))
-        raw_us = np.stack([np.array(resized_im),], axis=2)
-        
-        if invert:
-            raw_us = raw_us.transpose((2, 0, 1))
-        raw_us = np.flip(np.flip(raw_us,axis=1), axis=2).copy()
+        with Image.open(self.files[idx]['gray']) as img_open:
+        #img_open = Image.open(self.files[idx]['gray'])
+            resized_im = img_open.resize((384,384))
+            raw_us = np.stack([np.array(resized_im),], axis=2)
+            
+            if invert:
+                raw_us = raw_us.transpose((2, 0, 1))
+            raw_us = np.flip(np.flip(raw_us,axis=1), axis=2).copy()
 
-        # normalize (raw_us.dtype = uint8)
+            # normalize (raw_us.dtype = uint8)
         return (raw_us / np.iinfo(raw_us.dtype).max)
 
     def open_mask(self, idx, add_dims=False):
         # open mask file
-        raw_mask = np.array(Image.open(self.files[idx]['gt']).resize((384,384), resample=Image.NEAREST))
-        raw_mask = raw_mask[:, :, 0]
-        #raw = (lambda x: x==127)(raw_mask)*1
-        #raw = (lambda x: x==255)(raw)*2
-        
-        # raw_mask = np.where(raw_mask > 100, 1, 0)
-        raw_mask = np.where(raw_mask != 0, raw_mask//127, 0)
-        # raw_mask = np.where(raw_mask == 255, 2, raw_mask)
-        raw_mask = np.flip(np.flip(raw_mask, axis=0), axis=1).copy()
+        with Image.open(self.files[idx]['gt']) as img:
+            raw_mask = np.array(img.resize((384,384), resample=Image.NEAREST))
+            raw_mask = raw_mask[:, :, 0]
+            #raw = (lambda x: x==127)(raw_mask)*1
+            #raw = (lambda x: x==255)(raw)*2
+            
+            # raw_mask = np.where(raw_mask > 100, 1, 0)
+            raw_mask = np.where(raw_mask != 0, raw_mask//127, 0)
+            # raw_mask = np.where(raw_mask == 255, 2, raw_mask)
+            raw_mask = np.flip(np.flip(raw_mask, axis=0), axis=1).copy()
 
         return np.expand_dims(raw_mask, 0) if add_dims else raw_mask
 
