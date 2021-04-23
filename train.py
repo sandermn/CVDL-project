@@ -9,7 +9,7 @@ from torch import nn
 from torchvision import transforms
 from utils.helpers import get_train_val_set, predb_to_mask, batch_to_img, make_3d
 from Unet2D import Unet2D
-from utils.metrics import acc_metric, dice_function, dice_loss
+from utils.metrics import acc_metric, dice_function, dice_loss, jaccard_distance_loss
 from monai.metrics import DiceMetric
 from monai.losses import DiceLoss
 
@@ -54,7 +54,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                     outputs = model(x)
                     #print('a', outputs.shape, y.shape)
                     loss = loss_fn(outputs, y)
-                    print(loss.requires_grad)
+                    #print(loss.requires_grad)
 
                     # print(loss)
                     # the backward pass frees the graph memory, so there is no
@@ -84,10 +84,11 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                                                                                           torch.cuda.memory_allocated() / 1024 / 1024))
                     # print(torch.cuda.memory_summary())
 
-            epoch_loss = running_loss / len(dataloader.dataset)
+            epoch_loss = (running_loss / len(dataloader.dataset))
             epoch_acc = running_acc / len(dataloader.dataset)
             epoch_dice = running_dice / len(dataloader.dataset)
             #epoch_dice = 1
+            print(epoch_loss, epoch_loss.item())
             
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
@@ -167,7 +168,7 @@ def main(
     #dice_met = DiceMetric(include_background=False)
     # else import dice_metric
     # do some training
-    train_loss, valid_loss = train(unet, train_dl, valid_dl, dice_loss, opt, acc_metric, dice_function, epochs=epochs_val,
+    train_loss, valid_loss = train(unet, train_dl, valid_dl, jaccard_distance_loss, opt, acc_metric, dice_function, epochs=epochs_val,
                                    params_path=params_path)
 
     # plot training and validation losses
@@ -203,14 +204,14 @@ if __name__ == "__main__":
 
     # parameters
     bs = 6
-    epochs_val = 50
+    epochs_val = 2
     learn_rate = 0.01
     dataset = 'CAMUS'
     outputs = 4
     ckpt = None
     isotropic = False
     include_es = False
-    is_local = True
+    is_local = False
     include_2ch = True
     include_4ch = False
 
