@@ -173,8 +173,8 @@ def main(
     if ckpt:
         unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
-    loss_fn = nn.CrossEntropyLoss()
-    #loss_fn = DiceLoss()
+    # loss_fn = nn.CrossEntropyLoss()
+    loss_fn = DiceLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
     dice_function = F1(num_classes=4, average='macro', ignore_index=0, mdmc_average='samplewise')
 
@@ -209,10 +209,10 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/baseline')
+    params_path = Path('models/diceloss')
 
     # parameters
-    bs = 32
+    bs = 8
     epochs_val = 50
     learn_rate = 0.01
     dataset = 'CAMUS'

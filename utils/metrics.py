@@ -3,10 +3,10 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from torch import nn
-
+from torchmetrics import F1
 def acc_metric(predb, yb):
     return (predb.argmax(dim=1) == yb.cuda()).float().mean()
-
+"""
 def dice_function(predb, yb):
     scores = []
     for pred, y in zip(predb, yb):
@@ -14,9 +14,7 @@ def dice_function(predb, yb):
         #print('df', score.requires_grad)
         scores.append(score)
     return torch.mean(torch.stack(scores))
-    
-        
-
+          
 def calc_dice_coef(pred, y):
     #print(f'calc_dice_coef: {pred.shape}{y.shape}')
     y_classes = list(np.unique(y)) # [0,1,2,3] or [0,1]
@@ -33,12 +31,10 @@ def calc_dice_coef(pred, y):
         TP = torch.sum(torch.multiply(y_match, p_match), dtype=y_match.dtype)
         dice.append((2*TP+smooth)/(torch.sum(y_match)+torch.sum(p_match)+smooth))
     return torch.mean(torch.stack(dice))
-
-                    
+                 
 def dice_loss(predb, yb):
     dl = dice_function(predb, yb)
     return torch.add(torch.neg(dl), torch.FloatTensor([1.]).cuda())
-
 
 def jaccard_distance_loss(predb, yb):
     scores = []
@@ -65,8 +61,10 @@ def calc_jdl(pred, y):
     jdls.requires_grad_(True)
 
     return jdls
-
+"""
 class DiceLoss(nn.Module):
+
+
     def __init__(self, reduction='mean', eps=1e-7):
         super().__init__()
         self.eps, self.reduction = eps, reduction
