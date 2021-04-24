@@ -93,6 +93,18 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             print('-' * 10)
 
             train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
+
+            # for each tenth epoch save predictions of the last batch
+            if phase == 'valid' and epoch % 10 == 0 and visual_debug:
+                fig, ax = plt.subplots(5, 3, figsize=(15, 5 * 5))
+                for i in range(5):
+                    ax[i, 0].imshow(batch_to_img(x, i))
+                    ax[i, 1].imshow(y[i])
+                    ax[i, 2].imshow(predb_to_mask(outputs, i))
+                plt.show()
+                fig.savefig(params_path/f'predictions_epoch{epoch}.png')
+
+
         #torch.save(model.state_dict(), params_path + f'{epoch}.pth')
         if epoch_loss < best_loss:
             best_loss = epoch_loss
@@ -116,6 +128,8 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
 
     return train_loss, valid_loss
+
+
 def main(
     visual_debug=False, 
     params_path=None, 
@@ -153,7 +167,7 @@ def main(
     xb, yb = next(iter(train_dl))
     #print('c', xb.shape, yb.shape)
 
-    # build the Unet2D with one channel as input and 2 channels as output
+    # build the Unet2D with one channel as input and 4 channels as output
     unet = Unet2D(1, outputs)
     
     if ckpt:
@@ -191,7 +205,7 @@ def main(
             ax[i, 1].imshow(yb[i])
             ax[i, 2].imshow(predb_to_mask(predb, i))
         plt.show()
-        fig.savefig(params_path/'predictions.png')
+        fig.savefig(params_path/'predictions_final.png')
 
 if __name__ == "__main__":
     # Visual Debug
