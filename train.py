@@ -22,7 +22,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
     es_counter = 0
 
     for epoch in range(epochs):
-        print('Epoch {}/{}'.format(epoch, epochs - 1))
+        print('Epoch {}/{}'.format(epoch+1, epochs))
         print('-' * 10)
 
         for phase in ['train', 'valid']:
@@ -176,6 +176,7 @@ def main(
         plt.plot(valid_loss, label='Valid loss')
         plt.legend()
         plt.show()
+        plt.savefig(params_path/'loss.png')
 
     # predict on the next train batch (is this fair?)
     xb, yb = next(iter(train_dl))
