@@ -12,7 +12,7 @@ from Unet2D import Unet2D
 from utils.metrics import acc_metric, DiceLoss
 from torchmetrics import F1
 
-
+torch.backends.cudnn.enabled=False
 
 def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params_path, epochs=1):
     start = time.time()
@@ -71,7 +71,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                 dice = dice_fn(pred, y)
 
                 running_acc += acc * x.size(0) 
-                running_loss += loss * x.size(0) 
+                running_loss += loss.detach() * x.size(0) 
                 running_dice += dice * x.size(0)
 
                 if step % 100 == 0:
@@ -80,7 +80,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                                                                                           torch.cuda.memory_allocated() / 1024 / 1024))
                     # print(torch.cuda.memory_summary())
 
-            epoch_loss = (running_loss / len(dataloader.dataset))
+            epoch_loss = running_loss / len(dataloader.dataset)
             epoch_acc = running_acc / len(dataloader.dataset)
             epoch_dice = running_dice / len(dataloader.dataset)
             # epoch_dice = 1
@@ -90,15 +90,17 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             print('{} Loss: {:.4f} Acc: {} Dice: {}'.format(phase, epoch_loss, epoch_acc, epoch_dice))
             print('-' * 10)
 
-            train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
+            train_loss.append(epoch_loss.detach()) if phase == 'train' else valid_loss.append(epoch_loss.detach())
 
             # for each tenth epoch save predictions of the last batch
-            if phase == 'valid' and epoch+1 % 10 == 0 and visual_debug:
-                fig, ax = plt.subplots(4, 7, figsize=(4*6, 3 * 6))
-                for i in range(4):
+            if phase == 'valid' and ((epoch+1) % 10 == 0) and visual_debug:
+                rows = outputs.shape[0]
+                cols = 7
+                fig, ax = plt.subplots(rows, cols, figsize=(6*cols, 4*rows))
+                for i in range(rows):
                     ax[i, 0].imshow(batch_to_img(x, i))
                     ax[i, 1].imshow(y[i].cpu())
-                    for channel in range(4):
+                    for channel in range(outputs.shape[1]):
                         ax[i, 2+channel].imshow(outputs[i, channel, :, :].cpu())
                     ax[i, 6] .imshow(predb_to_mask(outputs, i))
                 #plt.show()
@@ -173,8 +175,8 @@ def main(
     if ckpt:
         unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
-    # loss_fn = nn.CrossEntropyLoss()
-    loss_fn = DiceLoss()
+    loss_fn = nn.CrossEntropyLoss()
+    # loss_fn = DiceLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
     dice_function = F1(num_classes=4, average='macro', ignore_index=0, mdmc_average='samplewise')
 
@@ -195,8 +197,8 @@ def main(
         predb = unet(xb.cuda())
     # show the predicted segmentations
     if visual_debug:
-        fig, ax = plt.subplots(4, 3, figsize=(15, 4 * 5))
-        for i in range(4):
+        fig, ax = plt.subplots(bs, 3, figsize=(15, bs * 5))
+        for i in range(bs):
             ax[i, 0].imshow(batch_to_img(xb, i))
             ax[i, 1].imshow(yb[i])
             ax[i, 2].imshow(predb_to_mask(predb, i))
@@ -209,7 +211,7 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/diceloss')
+    params_path = Path('models/preprocess/resize256')
 
     # parameters
     bs = 8

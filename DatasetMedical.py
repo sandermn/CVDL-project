@@ -143,8 +143,8 @@ class DatasetCAMUS(Dataset):
         pil_im = self.resize_image(pil_im)
         
         # preprocessing
-        #pil_im = pil_im.filter(ImageFilter.GaussianBlur(radius=5))
-        #pil_im = ImageEnhance.Sharpness(pil_im).enhance(2) # surprise us with an idea you have
+        # pil_im = pil_im.filter(ImageFilter.GaussianBlur(radius=5))
+        # pil_im = ImageEnhance.Sharpness(pil_im).enhance(2) # surprise us with an idea you have
         
         raw_us = np.stack([np.array(pil_im), ], axis=2)
         if invert:
@@ -190,7 +190,7 @@ class DatasetCAMUS(Dataset):
         return pil_im
 
     def resize_image(self, image):
-        return image.resize((512,256)) if self.isotropic else image.resize((384, 384))
+        return image.resize((512,256)) if self.isotropic else image.resize((256, 256))
 
     def __getitem__(self, idx):
         # get the image and mask as arrays
