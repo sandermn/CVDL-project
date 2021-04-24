@@ -190,7 +190,7 @@ class DatasetCAMUS(Dataset):
         return pil_im
 
     def resize_image(self, image):
-        return image.resize((384, 384))
+        return image.resize((512,256)) if self.isotropic else image.resize((384, 384))
 
     def __getitem__(self, idx):
         # get the image and mask as arrays

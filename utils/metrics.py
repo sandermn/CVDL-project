@@ -12,30 +12,27 @@ def dice_function(predb, yb):
     for pred, y in zip(predb, yb):
         score = calc_dice_coef(pred, y)
         #print('df', score.requires_grad)
-        scores.append(score) 
+        scores.append(score)
     return torch.mean(torch.stack(scores))
     
         
 
 def calc_dice_coef(pred, y):
     #print(f'calc_dice_coef: {pred.shape}{y.shape}')
-    y_classes = list(torch.unique(y)) # [0,1,2,3] or [0,1]
+    y_classes = list(np.unique(y)) # [0,1,2,3] or [0,1]
     p_classes = list(range(pred.shape[0]))
     #print(f'y_classes: {y_classes}, p_classes: {p_classes}')
-    #assert y_classes == p_classes , "pred and y should have the same channels"
-    pred = pred.argmax(dim=0)
+    #assert y_classes == p_classes, "pred and y should have the same channels"
+    pred_copy = pred.detach().cpu().numpy()
+    predictions = pred_copy.argmax(dim=0)
     dice = []
     smooth = 1e-6
     for pc in p_classes[1:]:
         y_match = torch.where(y == pc, 1, 0)
         p_match = torch.where(pred == pc, 1, 0)
         TP = torch.sum(torch.multiply(y_match, p_match), dtype=y_match.dtype)
-        #print('cdc1.5', TP.requires_grad)
         dice.append((2*TP+smooth)/(torch.sum(y_match)+torch.sum(p_match)+smooth))
-    doice = torch.mean(torch.stack(dice))
-    doice.requires_grad_(True)
-    #print('cdc2', doice.requires_grad)
-    return doice
+    return torch.mean(torch.stack(dice))
 
                     
 def dice_loss(predb, yb):

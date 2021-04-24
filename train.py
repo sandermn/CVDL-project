@@ -2,13 +2,15 @@ import matplotlib.pyplot as plt
 import time
 import torch
 import os
+import torch.nn.functional as F
 from pathlib import Path
 from torch.utils.data import DataLoader
 from torch import nn
 from torchvision import transforms
 from utils.helpers import get_train_val_set, predb_to_mask, batch_to_img, make_3d
 from Unet2D import Unet2D
-from utils.metrics import acc_metric, dice_function, dice_loss, jaccard_distance_loss, DiceLoss
+from utils.metrics import acc_metric, DiceLoss
+from torchmetrics import F1
 
 
 
@@ -20,6 +22,9 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
     best_loss = 10
     es_counter = 0
+    
+    if params_path:
+        params_path.mkdir(parents=True, exist_ok=True)
 
     for epoch in range(epochs):
         print('Epoch {}/{}'.format(epoch+1, epochs))
@@ -50,14 +55,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
                     # zero the gradients
                     optimizer.zero_grad()
                     outputs = model(x)
-                    #print('a', outputs.shape, y.shape)
                     loss = loss_fn(outputs, y)
-                    #print(loss.requires_grad)
-
-                    # print(loss)
-                    # the backward pass frees the graph memory, so there is no
-                    # need for torch.no_grad in this training pass
-                    #print(y.max())
                     loss.backward()
                     optimizer.step()
                     # scheduler.step()
@@ -69,8 +67,8 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
                 # stats 
                 acc = acc_fn(outputs, y)
-                #print('b', outputs.shape, y.shape)
-                dice = dice_fn(outputs, y)
+                pred = F.softmax(outputs, dim=1)
+                dice = dice_fn(pred, y)
 
                 running_acc += acc * x.size(0) 
                 running_loss += loss * x.size(0) 
@@ -85,7 +83,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             epoch_loss = (running_loss / len(dataloader.dataset))
             epoch_acc = running_acc / len(dataloader.dataset)
             epoch_dice = running_dice / len(dataloader.dataset)
-            #epoch_dice = 1
+            # epoch_dice = 1
             
             print('Epoch {}/{}'.format(epoch+1, epochs))
             print('-' * 10)
@@ -95,13 +93,14 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             train_loss.append(epoch_loss) if phase == 'train' else valid_loss.append(epoch_loss)
 
             # for each tenth epoch save predictions of the last batch
-            if phase == 'valid' and epoch % 10 == 0 and visual_debug:
-                fig, ax = plt.subplots(5, 6, figsize=(15, 5 * 5))
-                for i in range(5):
+            if phase == 'valid' and epoch+1 % 10 == 0 and visual_debug:
+                fig, ax = plt.subplots(4, 7, figsize=(4*6, 3 * 6))
+                for i in range(4):
                     ax[i, 0].imshow(batch_to_img(x, i))
-                    ax[i, 1].imshow(y[i])
-                    for channel in range(len(outputs[1])):
-                        ax[i, 2+channel].imshow(predb_to_mask(outputs[:, channel, :, :], i))
+                    ax[i, 1].imshow(y[i].cpu())
+                    for channel in range(4):
+                        ax[i, 2+channel].imshow(outputs[i, channel, :, :].cpu())
+                    ax[i, 6] .imshow(predb_to_mask(outputs, i))
                 #plt.show()
                 fig.savefig(params_path/f'predictions_epoch{epoch}.png')
 
@@ -122,7 +121,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
         params_path.mkdir(parents=True, exist_ok=True)
         torch.save(model.state_dict(), params_path/'final.pth')
         f = open(params_path / 'config.txt', 'w')
-        f.write(f'bs: {bs},\nepochs: {epochs_val},\nlearn_rate: {learn_rate},\nloss: {epoch_loss},\nacc: {epoch_acc},\n dice:{epoch_dice}')
+        f.write(f'bs: {bs},\nepochs: {epochs_val},\nlearn_rate: {learn_rate},\nloss: {epoch_loss},\nacc: {epoch_acc},\ndice:{epoch_dice}')
         f.close()
 
     time_elapsed = time.time() - start
@@ -158,12 +157,12 @@ def main(
     
     print(f'Size of train dataset: {len(train_dataset)}\nSize of validation dataset: {len(valid_dataset)}')
 
-    if visual_debug:
-        fig, ax = plt.subplots(1, 2)
-        ax[0].imshow(train_dataset.open_as_array(150))
-        mask = train_dataset.open_mask(150)
-        ax[1].imshow(mask)
-        plt.show()
+    # if visual_debug:
+    #    fig, ax = plt.subplots(1, 2)
+    #    ax[0].imshow(train_dataset.open_as_array(150))
+    #    mask = train_dataset.open_mask(150)
+    #    ax[1].imshow(mask)
+    #    plt.show()
 
     xb, yb = next(iter(train_dl))
     #print('c', xb.shape, yb.shape)
@@ -175,12 +174,10 @@ def main(
         unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
-    loss_fn = DiceLoss()
+    #loss_fn = DiceLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
-    
-    #dice_met = DiceMetric(include_background=False)
-    # else import dice_metric
-    # do some training
+    dice_function = F1(num_classes=4, average='macro', ignore_index=0, mdmc_average='samplewise')
+
     train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_function, epochs=epochs_val,
                                    params_path=params_path)
 
@@ -192,20 +189,18 @@ def main(
         plt.legend()
         plt.show()
         plt.savefig(params_path/'loss.png')
-
     # predict on the next train batch (is this fair?)
     xb, yb = next(iter(train_dl))
     with torch.no_grad():
         predb = unet(xb.cuda())
-
     # show the predicted segmentations
     if visual_debug:
-        fig, ax = plt.subplots(bs, 3, figsize=(15, bs * 5))
-        for i in range(bs):
+        fig, ax = plt.subplots(4, 3, figsize=(15, 4 * 5))
+        for i in range(4):
             ax[i, 0].imshow(batch_to_img(xb, i))
             ax[i, 1].imshow(yb[i])
             ax[i, 2].imshow(predb_to_mask(predb, i))
-        plt.show()
+        #plt.show()
         fig.savefig(params_path/'predictions_final.png')
 
 if __name__ == "__main__":
@@ -214,10 +209,10 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/dice_loss_bs4')
+    params_path = Path('models/baseline')
 
     # parameters
-    bs = 16
+    bs = 32
     epochs_val = 50
     learn_rate = 0.01
     dataset = 'CAMUS'
@@ -226,8 +221,8 @@ if __name__ == "__main__":
     isotropic = False
     include_es = False
     is_local = True
-    include_2ch = True
-    include_4ch = False
+    include_2ch = False
+    include_4ch = True
 
     # Preprocessing
     pre_process = transforms.Compose([
