@@ -96,12 +96,13 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
 
             # for each tenth epoch save predictions of the last batch
             if phase == 'valid' and epoch % 10 == 0 and visual_debug:
-                fig, ax = plt.subplots(5, 3, figsize=(15, 5 * 5))
+                fig, ax = plt.subplots(5, 6, figsize=(15, 5 * 5))
                 for i in range(5):
                     ax[i, 0].imshow(batch_to_img(x, i))
                     ax[i, 1].imshow(y[i])
-                    ax[i, 2].imshow(predb_to_mask(outputs, i))
-                plt.show()
+                    for channel in range(len(outputs[1])):
+                        ax[i, 2+channel].imshow(predb_to_mask(outputs[:, channel, :, :], i))
+                #plt.show()
                 fig.savefig(params_path/f'predictions_epoch{epoch}.png')
 
 
