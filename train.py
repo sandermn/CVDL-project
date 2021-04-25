@@ -211,7 +211,7 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/full_dataset_novalidation')
+    params_path = Path('models/outputs')
 
     # parameters
     bs = 8
