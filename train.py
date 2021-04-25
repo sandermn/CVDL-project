@@ -9,10 +9,9 @@ from torch import nn
 from torchvision import transforms
 from utils.helpers import get_train_val_set, predb_to_mask, batch_to_img, make_3d
 from Unet2D import Unet2D
+from ImprovedUnet2D import ImprovedUnet2D
 from utils.metrics import acc_metric, DiceLoss
 from torchmetrics import F1
-
-torch.backends.cudnn.enabled=False
 
 def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params_path, epochs=1):
     start = time.time()
@@ -30,7 +29,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
         print('Epoch {}/{}'.format(epoch+1, epochs))
         print('-' * 10)
 
-        for phase in ['train', 'valid']:
+        for phase in ['train']:#, 'valid']:
             if phase == 'train':
                 model.train(True)
                 dataloader = train_dl
@@ -112,7 +111,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
             best_loss = epoch_loss
             es_counter = 0
             best_acc = epoch_acc
-            # best_dice = epoch_dice
+            best_dice = epoch_dice
             best_model = model.state_dict()
 
         es_counter += 1
@@ -123,7 +122,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
         params_path.mkdir(parents=True, exist_ok=True)
         torch.save(model.state_dict(), params_path/'final.pth')
         f = open(params_path / 'config.txt', 'w')
-        f.write(f'bs: {bs},\nepochs: {epochs_val},\nlearn_rate: {learn_rate},\nloss: {epoch_loss},\nacc: {epoch_acc},\ndice:{epoch_dice}')
+        f.write(f'bs: {bs},\nepochs: {epochs_val},\nlearn_rate: {learn_rate},\nloss: {best_loss},\nacc: {best_acc},\ndice:{best_dice}')
         f.close()
 
     time_elapsed = time.time() - start
@@ -170,14 +169,15 @@ def main(
     #print('c', xb.shape, yb.shape)
 
     # build the Unet2D with one channel as input and 4 channels as output
-    unet = Unet2D(1, outputs)
+    unet = ImprovedUnet2D(1, outputs)
     
     if ckpt:
         unet.load_state_dict(torch.load(ckpt))
     # loss function and optimizer
-    loss_fn = nn.CrossEntropyLoss()
-    # loss_fn = DiceLoss()
+    # loss_fn = nn.CrossEntropyLoss()
+    loss_fn = DiceLoss()
     opt = torch.optim.Adam(unet.parameters(), lr=learn_rate)
+    #opt = torch.optim.SGD(unet.parameters(), lr=learn_rate, momentum=0.9)
     dice_function = F1(num_classes=4, average='macro', ignore_index=0, mdmc_average='samplewise')
 
     train_loss, valid_loss = train(unet, train_dl, valid_dl, loss_fn, opt, acc_metric, dice_function, epochs=epochs_val,
@@ -185,12 +185,12 @@ def main(
 
     # plot training and validation losses
     if visual_debug:
-        plt.figure(figsize=(10, 8))
+        fig = plt.figure(figsize=(10, 8))
         plt.plot(train_loss, label='Train loss')
         plt.plot(valid_loss, label='Valid loss')
         plt.legend()
-        plt.show()
-        plt.savefig(params_path/'loss.png')
+        # plt.show()
+        fig.savefig(params_path/'loss.png')
     # predict on the next train batch (is this fair?)
     xb, yb = next(iter(train_dl))
     with torch.no_grad():
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     
     # Model Save Path
     # Use models/custom
-    params_path = Path('models/preprocess/resize256')
+    params_path = Path('models/full_dataset_novalidation')
 
     # parameters
     bs = 8
@@ -221,9 +221,9 @@ if __name__ == "__main__":
     outputs = 4
     ckpt = None
     isotropic = False
-    include_es = False
+    include_es = True
     is_local = True
-    include_2ch = False
+    include_2ch = True
     include_4ch = True
 
     # Preprocessing
@@ -231,7 +231,7 @@ if __name__ == "__main__":
         # transforms.GaussianBlur(9, sigma=(0.1,1))
     ])
     augmentation = transforms.Compose([
-        #transforms.RandomHorizontalFlip(p=0.3)
+        # transforms.RandomRotation(degrees=10)
     ])
 
     #ckpt = 'models/4ch_50_epochsfinal.pth'

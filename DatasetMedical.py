@@ -150,7 +150,9 @@ class DatasetCAMUS(Dataset):
         if invert:
             raw_us = raw_us.transpose((2, 0, 1))
         # normalize
-        return (raw_us / np.iinfo(raw_us.dtype).max)
+        norm =  (raw_us / np.iinfo(raw_us.dtype).max)
+        # centered = norm - np.mean(norm)
+        return norm
 
     def open_mask(self, idx, add_dims=False):
         # open mask file
@@ -165,8 +167,7 @@ class DatasetCAMUS(Dataset):
         
         pil_im = self.resize_image(pil_im)
         raw_mask = np.array(pil_im)  # a numpy array with unique values [0,1,2,3]
-
-        return raw_mask
+        return np.expand_dims(raw_mask, 0) if add_dims else raw_mask
     
     def create_isotropy(self, pil_im):
         """ 
@@ -190,7 +191,7 @@ class DatasetCAMUS(Dataset):
         return pil_im
 
     def resize_image(self, image):
-        return image.resize((512,256)) if self.isotropic else image.resize((256, 256))
+        return image.resize((512,256)) if self.isotropic else image.resize((128,128))
 
     def __getitem__(self, idx):
         # get the image and mask as arrays
@@ -198,7 +199,6 @@ class DatasetCAMUS(Dataset):
         y = torch.tensor(self.open_mask(idx, add_dims=False), dtype=torch.torch.int64)
         # x = self.open_as_array(idx, invert=self.pytorch)
         # y = self.open_mask(idx, add_dims=False)
-
         if self.pre_processing:
             x = self.pre_processing(x)
         # transformation
@@ -244,7 +244,7 @@ class DatasetTEE(Dataset):
         # open ultrasound data
         with Image.open(self.files[idx]['gray']) as img_open:
         #img_open = Image.open(self.files[idx]['gray'])
-            resized_im = img_open.resize((384,384))
+            resized_im = img_open.resize((128,128))
             raw_us = np.stack([np.array(resized_im),], axis=2)
             
             if invert:
@@ -257,7 +257,7 @@ class DatasetTEE(Dataset):
     def open_mask(self, idx, add_dims=False):
         # open mask file
         with Image.open(self.files[idx]['gt']) as img:
-            raw_mask = np.array(img.resize((384,384), resample=Image.NEAREST))
+            raw_mask = np.array(img.resize((128,128), resample=Image.NEAREST))
             raw_mask = raw_mask[:, :, 0]
             #raw = (lambda x: x==127)(raw_mask)*1
             #raw = (lambda x: x==255)(raw)*2

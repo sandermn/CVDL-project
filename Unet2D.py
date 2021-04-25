@@ -15,7 +15,6 @@ class Unet2D(nn.Module):
 
     def __call__(self, x):
         # downsampling part
-        #print(size(x))
         conv1 = self.conv1(x)
         conv2 = self.conv2(conv1)
         conv3 = self.conv3(conv2)
@@ -56,4 +55,3 @@ class Unet2D(nn.Module):
                             torch.nn.ConvTranspose2d(out_channels, out_channels, kernel_size=3, stride=2, padding=1, output_padding=1) 
                             )
         return expand
-    
