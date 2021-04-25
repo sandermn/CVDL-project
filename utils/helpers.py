@@ -55,7 +55,7 @@ def get_train_val_set(dataset, is_local, pre_process, transform, isotropic, incl
             include_2ch=include_2ch,
             include_4ch=include_4ch,
             start=1,
-            stop=400)
+            stop=300)
         valid_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, include_4ch=include_4ch, start=301, stop=400)
         test_dataset = DatasetCAMUS(base_path, isotropic=isotropic, include_es=include_es, include_2ch=include_2ch, include_4ch=include_4ch, start=401, stop=450)
         print(len(train_dataset), len(valid_dataset), len(test_dataset))

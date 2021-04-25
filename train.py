@@ -29,7 +29,7 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, dice_fn, params
         print('Epoch {}/{}'.format(epoch+1, epochs))
         print('-' * 10)
 
-        for phase in ['train']:#, 'valid']:
+        for phase in ['train', 'valid']:
             if phase == 'train':
                 model.train(True)
                 dataloader = train_dl
